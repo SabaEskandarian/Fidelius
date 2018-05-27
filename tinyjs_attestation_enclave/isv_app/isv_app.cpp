@@ -30,9 +30,19 @@
  */
 
 // This sample is confined to the communication between a SGX client platform
-// and an ISV Application Server. 
+// and an ISV Application Server.
+
+// enclave manager imports
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <map>
+#include <stdlib.h>
+#include <vector>
 
 
+
+///////////////////////////////////
 #include <stdarg.h>
 #include <stdio.h>
 #include <limits.h>
@@ -58,7 +68,6 @@
 #include "sgx_uae_service.h"
 
 #include "service_provider.h"
-
 #ifndef SAFE_FREE
 #define SAFE_FREE(ptr) {if (NULL != (ptr)) {free(ptr); (ptr) = NULL;}}
 #endif
@@ -76,11 +85,13 @@ uint8_t* msg2_samples[] = { msg2_sample1, msg2_sample2 };
 uint8_t* msg3_samples[MSG3_BODY_SIZE] = { msg3_sample1, msg3_sample2 };
 uint8_t* attestation_msg_samples[] =
     { attestation_msg_sample1, attestation_msg_sample2};
-    
+
+    using namespace std;
+
 void ocall_print_string(const char *str)
 {
-    /* Proxy/Bridge will check the length and null-terminate 
-     * the input string to prevent buffer overflow. 
+    /* Proxy/Bridge will check the length and null-terminate
+     * the input string to prevent buffer overflow.
      */
     printf("%s", str);
 }
@@ -174,6 +185,180 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
     }
 }
 
+// enclave manager required functions
+
+#define DEBUG_MODE 1
+
+#define ON_BLUR 0
+#define ON_FOCUS 1
+#define INITIALIZE_ENCLAVE 2
+#define ADD_FORM 3
+#define ADD_SCRIPT 4
+#define ADD_INPUT 5
+#define TERMINATE_ENCLAVE 6
+#define SUBMIT_HTTP_REQ 7
+#define SHUTDOWN_EM 8
+
+#define N_COMMANDS 9
+
+/*
+this ivar is for debugging only, it will close the debug
+log after the EM recieves/parses the specified number of commands.
+*/
+int eventsUntilCloseLog = 5;
+
+bool runningManager = true;
+ofstream myfile;
+
+void onBlur(string formName, string inputName, double mouseX, double mouseY) {
+	//TO DO: make ecall for blur event
+	if (DEBUG_MODE) myfile << "BLUR on form: " << formName << " input: " << inputName << " at: " << mouseX << ", " << mouseY << endl;
+}
+
+void onFocus(string formName, string inputName, double mouseX, double mouseY) {
+	//TO DO: make ecall for focus event
+	if (DEBUG_MODE) myfile << "FOCUS on form: " << formName << " input: " << inputName << " at: " << mouseX << ", " << mouseY << endl;
+}
+
+void addInput(string name, string input_i, string type) {
+	//TO DO: make ecall for adding input
+	if (DEBUG_MODE) myfile << "\tADD INPUT: " << input_i << " of type: " << type << endl;
+}
+
+void addForm(vector<string> argv) {
+	//TO DO: make ecall for adding a form
+	string name = argv[1];
+	string signature = argv[2];
+	//string type = argv[3];
+
+	if (DEBUG_MODE) {
+		myfile << "ADD FORM with name: " << name  << " signature: " << signature << endl;
+		for (int i = 3; i < argv.size(); i+=2) {
+			//myfile << "input " << i << ": " + argv[i] << endl;
+			addInput(name, argv[i+1], argv[i]);
+		}
+	}
+}
+
+void addScript(string signature, string name) {
+	//TO DO: make ecall for adding a form
+	if (DEBUG_MODE) myfile << "ADD SCRIPT with signature: " << signature << "\ncode: " << name << endl;
+}
+
+
+
+void initializeEnclave(int origin) {
+	//TO DO: write code to initialize an enclave, should be similar to SampleEnclave init()
+	if (DEBUG_MODE) myfile << "INIT enclave with origin: " << origin << endl;
+}
+
+void terminateEnclave(int origin) {
+	//TO DO: write code to terminate an enclave
+	if (DEBUG_MODE) myfile << "TERMINATE enclave with origin: " << origin << endl;
+}
+
+void submitHttpReq(string request) {
+	//TO DO: needs to forward request to the extension
+	if (DEBUG_MODE) myfile << "sending HTTP request: " << request << endl;
+}
+
+void parseScript(string message) {
+	vector<string> argv;
+	string sigsAndScripts = message.substr(3, message.length()-3); //skips over 8\n
+	string delimiter = "\\n#EOF#\\n";
+	size_t pos = 0;
+	string token;
+
+	while((pos = sigsAndScripts.find(delimiter)) != string::npos) {
+		token = sigsAndScripts.substr(0,pos);
+		argv.push_back(token);
+		sigsAndScripts.erase(0, pos + delimiter.length());
+	}
+	for (int i = 0; i < argv.size()/2; i++) {
+		addScript(argv[i*2], argv[i*2+1]);
+		myfile << "\n\n\n";
+	}
+}
+
+bool parseMessage(string message) {
+	eventsUntilCloseLog--;
+
+	vector<string> argv;
+
+	char *comstr = &message.at(0);
+	int command = atoi(comstr);
+
+	if (command == ADD_SCRIPT) {
+		parseScript(message);
+		return true;
+	}
+	string delimiter = "\\n";
+	size_t pos = 0;
+	string token;
+
+	string s = message;
+	while ((pos = s.find(delimiter)) != string::npos) {
+    	token = s.substr(0, pos);
+    	argv.push_back(token);
+    	s.erase(0, pos + delimiter.length());
+
+	}
+	//myfile << "EM found: " << argv.size() << " arguments delimited by \\n" << endl;
+
+	if (command < 0 || command >= N_COMMANDS) {
+		myfile << "no command: " << command << " found" << endl;
+		return true;
+	}
+
+
+	switch(command) {
+		case ON_BLUR:
+			onBlur(argv[1], argv[2], stod(argv[3], NULL), stod(argv[4], NULL));
+			break;
+		case ON_FOCUS:
+			onFocus(argv[1], argv[2], stod(argv[3], NULL), stod(argv[4], NULL));
+			break;
+		case INITIALIZE_ENCLAVE:
+			initializeEnclave(stod(argv[1], NULL));
+			break;
+		case ADD_FORM:
+			addForm(argv);
+			break;
+		case ADD_SCRIPT:
+			addScript(argv[1], argv[2]);
+			break;
+		case ADD_INPUT:
+			//addInput(argv[1], argv[2]);
+			break;
+		case TERMINATE_ENCLAVE:
+			terminateEnclave(stod(argv[1], NULL));
+			break;
+		case SUBMIT_HTTP_REQ:
+			submitHttpReq(argv[1]);
+			break;
+		case SHUTDOWN_EM:
+			myfile.close();
+			return false;
+	}
+	myfile << "\n\n";
+	if (eventsUntilCloseLog == 0) {
+		return false;
+	}
+	return true;
+}
+
+void sendMessage(string message) {
+    // Collect the length of the message
+    /*unsigned int len = message.length();
+    // Now we can output our message
+    len = length;
+    cout << char(len>>0) << char(len>>8) << char(len>>16) << char(len>>24);
+    cout << msg << flush;	*/
+}
+
+
+
+////////////////////////////////
 // This sample code doesn't have any recovery/retry mechanisms for the remote
 // attestation. Since the enclave can be lost due S3 transitions, apps
 // susceptible to S3 transitions should have logic to restart attestation in
@@ -655,9 +840,9 @@ int main(int argc, char* argv[])
         // should pass it to the blob analysis API called sgx_report_attestation_status()
         // along with the trust decision from the ISV server.
         // The ISV application will take action based on the update_info.
-        // returned in update_info by the API.  
+        // returned in update_info by the API.
         // This call is stubbed out for the sample.
-        // 
+        //
         // sgx_update_info_bit_t update_info;
         // ret = sgx_report_attestation_status(
         //     &p_att_result_msg_body->platform_info_blob,
@@ -705,11 +890,75 @@ CLEANUP:
             // led us to this point in the code.
             ret = ret_save;
         }
-        fprintf(OUTPUT, "\nCall enclave_ra_close success.");
+        fprintf(OUTPUT, "\nCall enclave_ra_close success.\n");
     }
 
-    char s[100] = "print(\n\"This is a test\");result=1";
-    ret = run_js(enclave_id, &status, s, strlen(s));
+
+    // enclave manager main code
+    freopen( "stderr.log", "w", stderr );
+      myfile.open ("debug_log.txt");
+      myfile << "hello from the enclave manager!\n\n";
+
+    std::string oneLine = "";
+
+      while (1){
+          unsigned int length = 0;
+          //read the first four bytes (=> Length)
+          for (int i = 0; i < 4; i++)
+          {
+              unsigned int read_char = getchar();
+              length = length | (read_char << i*8);
+          }
+
+      string msg = "";
+
+          for (int i = 0; i < length; i++)
+          {
+              msg += getchar();
+          }
+
+          msg = msg.substr(1,msg.length()-2);
+
+          if (!parseMessage(msg)) {
+            break;
+          }
+          /*
+          std::string message = "{\"text\":\"This is a response message\"}";
+          // Collect the length of the message
+          unsigned int len = message.length();
+
+          // Now we can output our message
+          if (msg == "{\"text\":\"#STOP#\"}"){
+              message = "{\"text\":\"EXITING...\"}";
+              len = message.length();
+
+              std::cout   << char(len>>0)
+                          << char(len>>8)
+                          << char(len>>16)
+                          << char(len>>24);
+
+              std::cout << message;
+              break;
+          }
+
+          len = length;
+          std::cout   << char(len>>0)
+                      << char(len>>8)
+                      << char(len>>16)
+                      << char(len>>24);
+
+
+          std::cout << msg << std::flush;
+          exit(0);
+          std::cout << msg << std::flush;*/
+      }
+      myfile << "SHUTTING DOWN EM" << endl;
+      myfile.close();
+
+
+    ////////////////////////////////////
+    char s[1000] = "print(\"This is a test\");result=1;";
+    ret = run_js(enclave_id, &status, s, strlen(s)+1);
     printf("testing: %s\n", s);
     char* c = "test";
     char* f = "field";
@@ -747,4 +996,3 @@ CLEANUP:
     getchar();
     return ret;
 }
-

@@ -458,6 +458,27 @@ void printForm(form f){
     }
 }
 
+std::string parse_form(form f) {
+    std::string start = "{";
+    std::string end = "}";
+
+    std::string parsed = "" + start;
+
+    for(std::map<std::string, input>::const_iterator it = f.inputs.begin();
+    it != f.inputs.end(); ++it)
+    {
+        std::string key = it->first;
+        std::string value = it->second.value;
+        std::string pair = "\"" + key + "\":\"" + value + "\",";
+        parsed = parsed + pair;
+    }
+
+    parsed = parsed + end;
+    // printf_enc("prased form: %s\n", parsed);
+    // printf_enc("len: %d\n", parsed.length());
+    return parsed; 
+}
+
 //copys a string into the enclave
 std::string copyString(char* s, size_t len) {
     char es_temp[len];
@@ -465,7 +486,6 @@ std::string copyString(char* s, size_t len) {
     std::string es = std::string(es_temp);
     return es;
 }
-
 
 sgx_status_t get_mac_key(uint8_t *p_mac, uint32_t mac_size,
         uint8_t *p_gcm_mac) {
@@ -521,7 +541,6 @@ sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
 
     return ret;
 }
-
 
 //adds a new form to the internal list of forms
 sgx_status_t add_form(char* name, size_t len, uint8_t *p_mac, size_t mac_size) {
@@ -589,9 +608,10 @@ sgx_status_t onFocus(const char* formName, const char* inputName) {
 }
 
 //sets flag indicating no form/input field is ready to accept user input
-void onBlur() {
+sgx_status_t onBlur() {
   curForm = nullForm;
   curInput = nullInput;
+  return SGX_SUCCESS;
 }
 
 //see put_secret_data for explanation of types
@@ -605,10 +625,10 @@ sgx_status_t submit_form(const char* formName,
   form f = it->second;
 
   uint8_t aes_gcm_iv[12] = {0};
-  uint8_t str_form[1] = {0}; //TODO: change this
-  uint32_t len_str_form = 1;
+  std::string str_form = parse_form(f); 
+  uint32_t len_str_form = (uint32_t) str_form.length();
   sgx_status_t ret = sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_tag_t *) (&g_secret),
-                (const uint8_t*) &str_form,
+                (const uint8_t*) &str_form[0],
                 len_str_form,  
                 dest,
                 &aes_gcm_iv[0],
@@ -621,6 +641,7 @@ sgx_status_t submit_form(const char* formName,
 }
 
 int t = 5;
+int s = 6;
 void js_print(CScriptVar *v, void *userdata) {
     printf_enc("> %s\n", v->getParameter("text")->getString().c_str());
 }
@@ -631,25 +652,61 @@ void js_print(CScriptVar *v, void *userdata) {
 // }
 
 
+void js_update_form(CScriptVar *v, void *userdata) {
+    std::string formName = v->getParameter("formName")->getString();
+    std::string inputName = v->getParameter("inputName")->getString();
+    std::string val = v->getParameter("val")->getString();
+    std::map<std::string, form>::iterator it;
+    it = forms.find((std::string) formName);
+    if(it == forms.end()) {
+        printf_enc("Invalid form name: %d\n", formName);
+        return;
+    }
+    form f = it->second;
+    std::map<std::string, input>::iterator it2;
+    it2 = f.inputs.find((std::string) inputName);
+    if(it2 == f.inputs.end()) {
+        printf_enc("Invalid input name: %d\n", inputName);
+        return;
+    }
+
+    it2->second.value =val;
+    printf_enc("set %s to %s\n", it2->first, val);
+}
+
 void js_dump(CScriptVar *v, void *userdata) {
     CTinyJS *js = (CTinyJS*)userdata;
     js->root->trace(">  ");
 }
 
 sgx_status_t run_js(char* code, size_t len){
+    std::string str_forms = "";
+    for(std::map<std::string, form>::iterator it = forms.begin();
+    it != forms.end(); ++it)
+    {
+        std::string name = it->first;
+        std::string form = parse_form(it->second);
+        str_forms += name + " = " + form + ";";
+    }
+    str_forms = "print('working');update_form('tmp', 'tst', 'working');"; //remove long-term
 
-    std::string enc_code = copyString(code, len);
+    char tmp[len];
+    memcpy(tmp, code, len);
+    std::string enc_code = std::string(tmp);
+    enc_code = str_forms + enc_code;
+    std::string res;
     CTinyJS *js = new CTinyJS();
     registerFunctions(js);
-    std::string res;
     js->addNative("function print(text)", &js_print, 0);
     js->addNative("function dump()", &js_dump, js);
+    js->addNative("function update_form(formName, inputName, val)", &js_update_form, js);
+
     //js->addNative("function print_t()", &js_print_t, &t);
     try {
         //js->execute("print_t()");
         //t = 6;
         //js->execute("print_t()");
-        // js->execute("var lets_quit = 0; function quit() { lets_quit = 1; }");
+        //js->execute("var lets_quit = 0; function quit() { lets_quit = 1; }");
         // js->execute("print(\n\"Interactive mode... Type quit(); to exit, or print(...); to print something, or dump() to dump the symbol table!\");");
         res = js->evaluate(enc_code);
     } catch (CScriptException *e) {
@@ -666,6 +723,43 @@ sgx_status_t run_js(char* code, size_t len){
 #endif
 #endif
   return SGX_SUCCESS;
+}
+
+sgx_status_t get_keyboard_chars(uint8_t *p_src, uint32_t src_len, uint8_t *p_iv,  sgx_aes_gcm_128bit_tag_t *p_in_mac){
+    if(&curForm == &nullForm || &curInput == &nullInput) {
+        printf_enc("No input in focus.");
+        return SGX_ERROR_INVALID_PARAMETER;
+    }
+
+    sgx_status_t status;
+    printf_enc("Executing gcm_decrypt function from enclave...");
+    const sgx_aes_gcm_128bit_key_t p_key = {
+        0x24, 0xa3, 0xe5, 0xad, 0x48, 0xa7, 0xa6, 0xb1,
+        0x98, 0xfe, 0x35, 0xfb, 0xe1, 0x6c, 0x66, 0x85
+        };
+    
+/*
+    for (int i=0; i<4; i++){
+        printf("Cipher:%x", p_src[i]);
+    }
+    
+    for (int i=0; i<sizeof(p_in_mac)/sizeof(p_in_mac[0]); i++){
+        printf("Tag:%x", p_in_mac[i]);
+    }
+*/
+    uint8_t new_char[src_len]; 
+    status = sgx_rijndael128GCM_decrypt(&p_key,p_src, src_len, &new_char[0], p_iv, 12, NULL, 0, p_in_mac);
+    for (int i=0; i<src_len; i++){
+        printf_enc("Decrypted Characters(in Enclave):%x", new_char[i]);
+    }
+    
+    printf_enc("Status_decrypt: %x", status);
+    if(status != SGX_SUCCESS) {
+        return status;
+    }
+    curInput.value += (std::string) (char*) &new_char;
+
+    return status;
 }
 
 
