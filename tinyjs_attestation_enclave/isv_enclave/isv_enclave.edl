@@ -31,11 +31,12 @@
 
 enclave {
     from "sgx_tkey_exchange.edl" import *;
+    from "sgx_display/sgx_display.edl" import *;
 
     include "sgx_key_exchange.h"
     include "sgx_trts.h"
-    
-        untrusted {
+
+    untrusted {
         void ocall_print_string([in, string] const char *str);
     };
 
@@ -44,11 +45,11 @@ enclave {
                                             [out] sgx_ra_context_t *p_context);
         public sgx_status_t enclave_ra_close(sgx_ra_context_t context);
         public sgx_status_t verify_att_result_mac(sgx_ra_context_t context,
-                                                  [in,size=message_size] uint8_t* message, 
-                                                  size_t message_size, 
-                                                  [in,size=mac_size] uint8_t* mac, 
+                                                  [in,size=message_size] uint8_t* message,
+                                                  size_t message_size,
+                                                  [in,size=mac_size] uint8_t* mac,
                                                   size_t mac_size);
-        public sgx_status_t put_secret_data(sgx_ra_context_t context,  
+        public sgx_status_t put_secret_data(sgx_ra_context_t context,
                                             [in,size=secret_size] uint8_t* p_secret,
                                             uint32_t secret_size,
                                             [in,count=16] uint8_t* gcm_mac);
@@ -56,16 +57,18 @@ enclave {
         public sgx_status_t get_mac_key([in, size=mac_size] uint8_t* p_mac, uint32_t mac_size, [in,count=16] uint8_t* gcm_mac);
 
         public sgx_status_t run_js([in, out, size=len] char* code, size_t len);
-        
-        public sgx_status_t add_form([in, size=len] char* name, size_t len, [in, size=mac_size] uint8_t* mac, size_t mac_size);
-    
-        public sgx_status_t add_input([in, size=len1] char* name, size_t len1, [in, size=len2] char* input_i, size_t len2, [in, size=mac_form_size] uint8_t* mac_form, size_t mac_form_size, [in, size=mac_input_size] uint8_t* mac_input, size_t mac_input_size);      
-        
-        public sgx_status_t onFocus([in, string] const char* formName, [in, string] const char* inputName); 
-        
-        public sgx_status_t onBlur(); 
-        
-        public sgx_status_t submit_form([in, string] const char* formName, [out,size=encr_size] uint8_t* dest, uint32_t encr_size, [out,count=16] uint8_t* gcm_mac); 
+
+        public sgx_status_t add_form([in, size=len] char* name, size_t len, [in, size=origin_len] char* origin, size_t origin_len, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+
+        public sgx_status_t add_input([in, size=len1] char* name, size_t len1, [in, size=len2] char* input_i, size_t len2, [in, size=sig_form_size] uint8_t* sig_form, size_t sig_form_size, int validate);
+
+        public sgx_status_t onFocus([in, string] const char* formName, [in, string] const char* inputName, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+
+        public sgx_status_t onBlur();
+
+        public uint32_t form_len([in, string] const char* formName);
+
+        public sgx_status_t submit_form([in, string] const char* formName, [out,size=encr_size] uint8_t* dest, uint32_t encr_size, [out,count=16] uint8_t* gcm_mac);
 
         public sgx_status_t get_keyboard_chars([user_check] uint8_t *p_src, uint32_t src_len, [in] uint8_t *p_iv,  [in] sgx_aes_gcm_128bit_tag_t *p_in_mac);
     };

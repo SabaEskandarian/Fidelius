@@ -587,7 +587,7 @@ int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
             ret = SP_IAS_FAILED;
             break;
         }
-        FILE* OUTPUT = stdout;
+        FILE* OUTPUT = fopen("service_provider_report.txt","w");//stdout;
         fprintf(OUTPUT, "\n\n\tAtestation Report:");
         fprintf(OUTPUT, "\n\tid: 0x%0x.", attestation_report.id);
         fprintf(OUTPUT, "\n\tstatus: %d.", attestation_report.status);
@@ -675,7 +675,7 @@ int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
                 p_quote->report_body.isv_prod_id);
         fprintf(OUTPUT, "\n\tisv_svn: 0x%0x",p_quote->report_body.isv_svn);
         fprintf(OUTPUT, "\n");
-
+	fclose(OUTPUT);
         // A product service provider needs to verify that its enclave properties 
         // match what is expected.  The SP needs to check these values before
         // trusting the enclave.  For the sample, we always pass the policy check.
@@ -700,7 +700,7 @@ int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
             ret = SP_INTERNAL_ERROR;
             break;
         }
-
+	
         // Generate shared secret and encrypt it with SK, if attestation passed.
         uint8_t aes_gcm_iv[SAMPLE_SP_IV_SIZE] = {0};
         p_att_result_msg->secret.payload_size = 8;
@@ -730,6 +730,7 @@ int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
         // Freed by the network simulator in ra_free_network_response_buffer
         *pp_att_result_msg = p_att_result_msg_full;
     }
+	
     return ret;
 }
 

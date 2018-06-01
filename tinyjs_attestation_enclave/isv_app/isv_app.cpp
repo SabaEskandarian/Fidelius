@@ -242,7 +242,16 @@ void addForm(vector<string> argv) {
 
 void addScript(string signature, string name) {
 	//TO DO: make ecall for adding a form
-	if (DEBUG_MODE) myfile << "ADD SCRIPT with signature: " << signature << "\ncode: " << name << endl;
+  //verification
+  string gen_sign="Kg7eVNk&3L";//sgx_funct(name);
+  if(gen_sign==signature){
+    if (DEBUG_MODE) myfile << "ADD SCRIPT with signature: " << signature << "\ncode: " << name << endl;
+  }
+  else{
+    if (DEBUG_MODE) myfile << "signature did not match\n ";
+
+  }
+
 }
 
 
@@ -252,8 +261,9 @@ void initializeEnclave(int origin) {
 	if (DEBUG_MODE) myfile << "INIT enclave with origin: " << origin << endl;
 }
 
-void terminateEnclave(int origin) {
+void terminateEnclave(int origin,sgx_enclave_id_t enclave_id) {
 	//TO DO: write code to terminate an enclave
+  //sgx_destroy_enclave(enclave_id);
 	if (DEBUG_MODE) myfile << "TERMINATE enclave with origin: " << origin << endl;
 }
 
@@ -280,7 +290,7 @@ void parseScript(string message) {
 	}
 }
 
-bool parseMessage(string message) {
+bool parseMessage(string message,sgx_enclave_id_t enclave_id) {
 	eventsUntilCloseLog--;
 
 	vector<string> argv;
@@ -331,7 +341,7 @@ bool parseMessage(string message) {
 			//addInput(argv[1], argv[2]);
 			break;
 		case TERMINATE_ENCLAVE:
-			terminateEnclave(stod(argv[1], NULL));
+			terminateEnclave(stod(argv[1], NULL),enclave_id);
 			break;
 		case SUBMIT_HTTP_REQ:
 			submitHttpReq(argv[1]);
@@ -379,21 +389,25 @@ int main(int argc, char* argv[])
     sgx_ra_context_t context = INT_MAX;
     sgx_status_t status = SGX_SUCCESS;
     ra_samp_request_header_t* p_msg3_full = NULL;
-
-    int32_t verify_index = -1;
+	
+    int32_t verify_index =1;// -1;
     int32_t verification_samples = sizeof(msg1_samples)/sizeof(msg1_samples[0]);
 
-    FILE* OUTPUT = stdout;
+    FILE* OUTPUT = fopen("EM_report.txt","w");//stdout;
+    //fprintf(stdout, "\nhelp1 \n");
 
 #define VERIFICATION_INDEX_IS_VALID() (verify_index > 0 && \
                                        verify_index <= verification_samples)
 #define GET_VERIFICATION_ARRAY_INDEX() (verify_index-1)
-
-    if(argc > 1)
+	fprintf(OUTPUT,"argc: %d \n",argc);
+	for(int i=0;i<argc;i++){
+		fprintf(OUTPUT,"argv[%d]: %s \n",i,argv[i]);
+	}
+    if(argc > 2)
     {
 
         verify_index = atoi(argv[1]);
-
+	fprintf(OUTPUT, "verify index: %d\n",verify_index);
         if( VERIFICATION_INDEX_IS_VALID())
         {
             fprintf(OUTPUT, "\nVerifying precomputed attestation messages "
@@ -588,9 +602,9 @@ int main(int argc, char* argv[])
                 memcpy_s(p_msg2_full, msg2_full_size, precomputed_msg2,
                          msg2_full_size);
 
-                PRINT_BYTE_ARRAY(OUTPUT, p_msg2_full,
-                                 sizeof(ra_samp_response_header_t)
-                                 + p_msg2_full->size);
+                //PRINT_BYTE_ARRAY(OUTPUT, p_msg2_full,
+                  //               sizeof(ra_samp_response_header_t)
+                    //             + p_msg2_full->size);
             }
             else
             {
@@ -620,9 +634,9 @@ int main(int argc, char* argv[])
 
             fprintf(OUTPUT, "\nSent MSG1 to remote attestation service "
                             "provider. Received the following MSG2:\n");
-            PRINT_BYTE_ARRAY(OUTPUT, p_msg2_full,
-                             sizeof(ra_samp_response_header_t)
-                             + p_msg2_full->size);
+            //PRINT_BYTE_ARRAY(OUTPUT, p_msg2_full,
+              //               sizeof(ra_samp_response_header_t)
+                //             + p_msg2_full->size);
 
             fprintf(OUTPUT, "\nA more descriptive representation of MSG2:\n");
             PRINT_ATTESTATION_SERVICE_RESPONSE(OUTPUT, p_msg2_full);
@@ -639,9 +653,9 @@ int main(int argc, char* argv[])
                     fprintf(OUTPUT, "\nVerification ERROR. Our precomputed "
                                     "value for MSG2 does NOT match.\n");
                     fprintf(OUTPUT, "\nPrecomputed value for MSG2:\n");
-                    PRINT_BYTE_ARRAY(OUTPUT, precomputed_msg2,
-                                     sizeof(ra_samp_response_header_t)
-                                     + precomputed_msg2->size);
+                    //PRINT_BYTE_ARRAY(OUTPUT, precomputed_msg2,
+                      //               sizeof(ra_samp_response_header_t)
+                       //              + precomputed_msg2->size);
                     fprintf(OUTPUT, "\nA more descriptive representation "
                                     "of precomputed value for MSG2:\n");
                     PRINT_ATTESTATION_SERVICE_RESPONSE(OUTPUT,
@@ -715,7 +729,7 @@ int main(int argc, char* argv[])
             }
         }
 
-        PRINT_BYTE_ARRAY(OUTPUT, p_msg3, msg3_size);
+        //PRINT_BYTE_ARRAY(OUTPUT, p_msg3, msg3_size);
 
         p_msg3_full = (ra_samp_request_header_t*)malloc(
                        sizeof(ra_samp_request_header_t) + msg3_size);
@@ -779,16 +793,16 @@ int main(int argc, char* argv[])
                                     "attestation result message back that did "
                                     "NOT match the expected value.\n");
                     fprintf(OUTPUT, "\nEXPECTED ATTESTATION RESULT -");
-                    PRINT_BYTE_ARRAY(OUTPUT,
-                        attestation_msg_samples[GET_VERIFICATION_ARRAY_INDEX()],
-                        p_att_result_msg_full->size);
+                    //PRINT_BYTE_ARRAY(OUTPUT,
+                      //  attestation_msg_samples[GET_VERIFICATION_ARRAY_INDEX()],
+                        //p_att_result_msg_full->size);
                 }
             }
         }
 
         fprintf(OUTPUT, "\nATTESTATION RESULT RECEIVED - ");
-        PRINT_BYTE_ARRAY(OUTPUT, p_att_result_msg_full->body,
-                         p_att_result_msg_full->size);
+        //PRINT_BYTE_ARRAY(OUTPUT, p_att_result_msg_full->body,
+         //                p_att_result_msg_full->size);
 
 
         if( VERIFICATION_INDEX_IS_VALID() )
@@ -893,11 +907,27 @@ CLEANUP:
         fprintf(OUTPUT, "\nCall enclave_ra_close success.\n");
     }
 
+    ra_free_network_response_buffer(p_msg0_resp_full);
+    ra_free_network_response_buffer(p_msg2_full);
+    ra_free_network_response_buffer(p_att_result_msg_full);
+
+    // p_msg3 is malloc'd by the untrusted KE library. App needs to free.
+    SAFE_FREE(p_msg3);
+    SAFE_FREE(p_msg3_full);
+    SAFE_FREE(p_msg1_full);
+    SAFE_FREE(p_msg0_full);
+    sgx_destroy_enclave(enclave_id);
+     fclose(OUTPUT);
 
     // enclave manager main code
-    freopen( "stderr.log", "w", stderr );
-      myfile.open ("debug_log.txt");
+	//fprintf(stdout, "\n help");
+        
+	myfile.open ("debug_log.txt");
       myfile << "hello from the enclave manager!\n\n";
+//myfile << "SHUTTING DOWN EM" << endl;
+     
+    freopen( "stderr.log", "w", stderr );
+      
 
     std::string oneLine = "";
 
@@ -919,7 +949,7 @@ CLEANUP:
 
           msg = msg.substr(1,msg.length()-2);
 
-          if (!parseMessage(msg)) {
+          if (!parseMessage(msg,enclave_id)) {
             break;
           }
           /*
@@ -955,13 +985,13 @@ CLEANUP:
       myfile << "SHUTTING DOWN EM" << endl;
       myfile.close();
 
-
+	fclose(stderr);
     ////////////////////////////////////
-    char s[1000] = "print(\"This is a test\");result=1;";
-    ret = run_js(enclave_id, &status, s, strlen(s)+1);
-    printf("testing: %s\n", s);
-    char* c = "test";
-    char* f = "field";
+    //char s[1000] = "print(\"This is a test\");result=1;";
+    //ret = run_js(enclave_id, &status, s, strlen(s)+1);
+    //printf("testing: %s\n", s);
+    //char* c = "test";
+    //char* f = "field";
     // add_form(enclave_id, &status, c, 5);
     // if(status != SGX_SUCCESS) {
     //     printf("error1");
@@ -980,19 +1010,11 @@ CLEANUP:
     // }
     // onBlur(enclave_id);
 
-    sgx_destroy_enclave(enclave_id);
+    //sgx_destroy_enclave(enclave_id);
 
 
-    ra_free_network_response_buffer(p_msg0_resp_full);
-    ra_free_network_response_buffer(p_msg2_full);
-    ra_free_network_response_buffer(p_att_result_msg_full);
-
-    // p_msg3 is malloc'd by the untrusted KE library. App needs to free.
-    SAFE_FREE(p_msg3);
-    SAFE_FREE(p_msg3_full);
-    SAFE_FREE(p_msg1_full);
-    SAFE_FREE(p_msg0_full);
-    printf("\nEnter a character before exit ...\n");
-    getchar();
+    
+    //printf("\nEnter a character before exit ...\n");
+    //getchar();
     return ret;
 }

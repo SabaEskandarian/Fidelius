@@ -17,7 +17,7 @@
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * LIMITED TOsub, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
  * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
  * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
@@ -433,13 +433,21 @@ sgx_status_t put_secret_data(
 typedef struct input
 {
     std::string value;
-    int x;
-    int y;
+    uint16_t x;
+    uint16_t y;
+    uint16_t width;
+    uint16_t height;
 } input;
 
 typedef struct form
 {
     std::map<std::string, input> inputs;
+    std::string origin;
+    uint16_t x;
+    uint16_t y;
+    uint16_t width;
+    uint16_t height;
+    bool validated;
 } form;
 
 static const form nullForm = {};
@@ -458,7 +466,31 @@ void printForm(form f){
     }
 }
 
-std::string parse_form(form f) {
+std::string parse_form(form f, bool include_vals) {
+    std::string start = "{";
+    std::string end = "}";
+
+    std::string parsed = "" + start;
+
+    for(std::map<std::string, input>::const_iterator it = f.inputs.begin();
+    it != f.inputs.end(); ++it)
+    {
+        std::string key = it->first;
+        std::string value = "";
+        if(include_vals) {
+            value = it->second.value;
+        } 
+        std::string pair = "\"" + key + "\":\"" + value + "\",";
+        parsed = parsed + pair;
+    }
+
+    parsed = parsed + end;
+    // printf_enc("prased form: %s\n", parsed);
+    // printf_enc("len: %d\n", parsed.length());
+    return parsed; 
+}
+
+std::string parse_form_secure(form f, uint8_t* p_gcm_mac) {
     std::string start = "{";
     std::string end = "}";
 
@@ -469,13 +501,31 @@ std::string parse_form(form f) {
     {
         std::string key = it->first;
         std::string value = it->second.value;
+
+        uint32_t len_val = (uint32_t) value.length();
+        uint8_t encr_val[len_val] = {0};
+        uint8_t aes_gcm_iv[12] = {0};
+
+        sgx_status_t ret = sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_tag_t *) (&g_secret),
+                (const uint8_t*) &value[0],
+                len_val,  
+                &encr_val[0],
+                &aes_gcm_iv[0],
+                12,
+                NULL,
+                0,
+                (sgx_aes_gcm_128bit_tag_t *) (p_gcm_mac));
+        if(ret != SGX_SUCCESS){
+            return "-1";
+        }
+
+        value = std::string((char *) &encr_val[0]);
+
         std::string pair = "\"" + key + "\":\"" + value + "\",";
         parsed = parsed + pair;
     }
 
     parsed = parsed + end;
-    // printf_enc("prased form: %s\n", parsed);
-    // printf_enc("len: %d\n", parsed.length());
     return parsed; 
 }
 
@@ -513,46 +563,46 @@ sgx_status_t get_mac_key(uint8_t *p_mac, uint32_t mac_size,
     return ret;
 }
 
-sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
-                      uint8_t* p_mac, size_t mac_size) {
-    
-    if(mac_size != sizeof(sgx_mac_t))
-    {
-        return SGX_ERROR_INVALID_PARAMETER;
-    }
 
-    uint8_t mac[SGX_CMAC_MAC_SIZE] = {0};
-    sgx_status_t ret  = sgx_rijndael128_cmac_msg(
-            ((const sgx_cmac_128bit_key_t*) (&mac_secret)),
+sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
+                      sgx_ec256_signature_t* p_signature) {
+    
+    sgx_ecc_state_handle_t ecc_handle;
+    uint8_t result;
+
+    sgx_status_t ret = sgx_ecdsa_verify(
             p_message,
             message_size,
-            &mac
+            &g_sp_pub_key,
+            p_signature,
+            &result,
+            ecc_handle
         );
-
-    if(SGX_SUCCESS != ret)
-        {
-            return SGX_ERROR_INVALID_PARAMETER;
-        }
-    if(0 == consttime_memequal(p_mac, mac, sizeof(mac)))
-        {
-            ret = SGX_ERROR_MAC_MISMATCH;
-            return ret;
-        }
-
+    if(ret != SGX_SUCCESS) {
+        return SGX_ERROR_INVALID_PARAMETER;
+    }
+    if((sgx_status_t) result != SGX_EC_VALID) {
+        return SGX_ERROR_INVALID_PARAMETER;
+    }
     return ret;
 }
 
 //adds a new form to the internal list of forms
-sgx_status_t add_form(char* name, size_t len, uint8_t *p_mac, size_t mac_size) {
-    if(SGX_SUCCESS != validate((uint8_t*) name, (uint32_t) len, p_mac, mac_size)){
-        return SGX_ERROR_INVALID_PARAMETER;
-    }
+sgx_status_t add_form(char* name, size_t len, 
+                        char* origin, size_t origin_len, uint16_t x, uint16_t y, 
+                        uint16_t width, uint16_t height) {
 
     std::string eName = copyString(name, len);
     if(forms.count(eName) > 0) {
       return SGX_ERROR_INVALID_PARAMETER; //error if form already exists
     } else {
         form new_form;
+        std::string oName = copyString(origin, origin_len);
+        new_form.origin = oName;
+        new_form.x = x;
+        new_form.y = y;
+        new_form.width = width;
+        new_form.height = height;
         forms.insert(std::pair<std::string, form>(eName, new_form));
         return SGX_SUCCESS;
     }
@@ -560,21 +610,21 @@ sgx_status_t add_form(char* name, size_t len, uint8_t *p_mac, size_t mac_size) {
 
 //adds a new input field to a form
 sgx_status_t add_input(char * name, size_t len1, char* input_i, size_t len2,
-                    uint8_t *p_mac_form, size_t mac_form_size, 
-                    uint8_t *p_mac_input, size_t mac_input_size) {
-    if(SGX_SUCCESS != validate((uint8_t*) name, (uint32_t) len1, p_mac_form, mac_form_size)
-            || SGX_SUCCESS != validate((uint8_t*) input_i, (uint32_t) len2, p_mac_input, mac_input_size)){
-        return SGX_ERROR_INVALID_PARAMETER;
-    }
-
+                    uint8_t *p_sig_form, size_t sig_form_size, int val) {
+    
     std::string eName = copyString(name, len1);
     std::string eInput = copyString(input_i, len2);
     if(forms.count(eName) == 0) {
       return SGX_ERROR_INVALID_PARAMETER; //error if form does not exist
-    } else {
+    } else {  
         std::map<std::string, form>::iterator it;
         it = forms.find((std::string) eName);
         form f = it->second;
+        if(f.validated) {
+            return SGX_ERROR_INVALID_PARAMETER;
+        }
+
+
         std::map<std::string, input> inputs = f.inputs;
         if(inputs.count(eInput) > 0) {
             return SGX_ERROR_INVALID_PARAMETER; //error if input already exists
@@ -582,6 +632,21 @@ sgx_status_t add_input(char * name, size_t len1, char* input_i, size_t len2,
             input new_input;
             inputs.insert(std::pair<std::string, input>(eInput, new_input));
             f.inputs = inputs;
+            
+            // all inputs added, then only parse form and validate form
+            if(val == 1) {
+                std::string form = parse_form(f, false);
+                size_t len_form = form.length();
+                if(SGX_SUCCESS == validate((uint8_t*) form.c_str(), (uint32_t) len_form, (sgx_ec256_signature_t*) p_sig_form)) {        
+                    f.validated = true;
+                }
+                else {
+                    // delete form, return failure
+                    forms.erase((std::string) eName);
+                    return SGX_ERROR_MAC_MISMATCH;
+                }
+            }             
+            // what's the point of this line again Sawyer?
             it->second = f;
             return SGX_SUCCESS;
         }
@@ -589,7 +654,8 @@ sgx_status_t add_input(char * name, size_t len1, char* input_i, size_t len2,
 }
 
 //sets flag indicating which form/input field should stand by to recive user input
-sgx_status_t onFocus(const char* formName, const char* inputName) {
+sgx_status_t onFocus(const char* formName, const char* inputName, 
+                    uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
   std::map<std::string, form>::iterator it;
   it = forms.find((std::string) formName);
   if(it == forms.end()) {
@@ -604,6 +670,8 @@ sgx_status_t onFocus(const char* formName, const char* inputName) {
 
   curForm = f;
   curInput = it2->second;
+  curInput.x = x;
+  curInput.y = y;
   return SGX_SUCCESS;
 }
 
@@ -612,6 +680,17 @@ sgx_status_t onBlur() {
   curForm = nullForm;
   curInput = nullInput;
   return SGX_SUCCESS;
+}
+
+uint32_t form_len(const char* formName) {
+  std::map<std::string, form>::iterator it;
+  it = forms.find((std::string) formName);
+  if(it == forms.end()) {
+    return SGX_ERROR_INVALID_PARAMETER;
+  }
+  form f = it->second;
+  uint32_t len = (uint32_t) parse_form(f, true).length();
+  return len;
 }
 
 //see put_secret_data for explanation of types
@@ -623,21 +702,16 @@ sgx_status_t submit_form(const char* formName,
     return SGX_ERROR_INVALID_PARAMETER;
   }
   form f = it->second;
+  if(!f.validated) {
+    return SGX_ERROR_INVALID_PARAMETER;
+  }
 
-  uint8_t aes_gcm_iv[12] = {0};
-  std::string str_form = parse_form(f); 
-  uint32_t len_str_form = (uint32_t) str_form.length();
-  sgx_status_t ret = sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_tag_t *) (&g_secret),
-                (const uint8_t*) &str_form[0],
-                len_str_form,  
-                dest,
-                &aes_gcm_iv[0],
-                12,
-                NULL,
-                0,
-                (sgx_aes_gcm_128bit_tag_t *) (p_gcm_mac));
-
-  return ret;
+  std::string str_form = parse_form_secure(f, p_gcm_mac); 
+  if(str_form == "-1") {
+    return SGX_ERROR_INVALID_PARAMETER;
+  }
+  memcpy(dest, str_form.c_str(), str_form.length()+1);
+  return SGX_SUCCESS;
 }
 
 int t = 5;
@@ -685,7 +759,11 @@ sgx_status_t run_js(char* code, size_t len){
     it != forms.end(); ++it)
     {
         std::string name = it->first;
-        std::string form = parse_form(it->second);
+        form f = it->second;
+        if(!f.validated) {
+            continue;
+        }
+        std::string form = parse_form(it->second, true);
         str_forms += name + " = " + form + ";";
     }
     str_forms = "print('working');update_form('tmp', 'tst', 'working');"; //remove long-term
@@ -738,7 +816,7 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src, uint32_t src_len, uint8_t *p_iv,
         0x98, 0xfe, 0x35, 0xfb, 0xe1, 0x6c, 0x66, 0x85
         };
     
-/*
+    /*
     for (int i=0; i<4; i++){
         printf("Cipher:%x", p_src[i]);
     }
@@ -746,7 +824,7 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src, uint32_t src_len, uint8_t *p_iv,
     for (int i=0; i<sizeof(p_in_mac)/sizeof(p_in_mac[0]); i++){
         printf("Tag:%x", p_in_mac[i]);
     }
-*/
+    */
     uint8_t new_char[src_len]; 
     status = sgx_rijndael128GCM_decrypt(&p_key,p_src, src_len, &new_char[0], p_iv, 12, NULL, 0, p_in_mac);
     for (int i=0; i<src_len; i++){
@@ -761,7 +839,3 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src, uint32_t src_len, uint8_t *p_iv,
 
     return status;
 }
-
-
-
-

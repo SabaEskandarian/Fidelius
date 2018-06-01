@@ -77,8 +77,8 @@ else
 	Urts_Library_Name := sgx_urts
 endif
 
-App_Cpp_Files := isv_app/isv_app.cpp
-App_Include_Paths := -Iservice_provider -I$(SGX_SDK)/include
+App_Cpp_Files := isv_app/isv_app.cpp isv_app/sgx_display/btchannel.cpp
+App_Include_Paths := -Iservice_provider -I$(SGX_SDK)/include -Iisv_app/sgx_display
 
 App_C_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes $(App_Include_Paths)
 
@@ -95,7 +95,7 @@ else
 endif
 
 App_Cpp_Flags := $(App_C_Flags) -std=c++11
-App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -L. -lsgx_ukey_exchange -lpthread -lservice_provider -Wl,-rpath=$(CURDIR)/sample_libcrypto -Wl,-rpath=$(CURDIR)
+App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -L. -lsgx_ukey_exchange -lpthread -lservice_provider -lbluetooth -Wl,-rpath=$(CURDIR)/sample_libcrypto -Wl,-rpath=$(CURDIR)
 
 ifneq ($(SGX_MODE), HW)
 	App_Link_Flags += -lsgx_uae_service_sim
@@ -105,11 +105,11 @@ endif
 
 App_Cpp_Objects := $(App_Cpp_Files:.cpp=.o)
 
-App_Name := app
+App_Name := EnclaveManager
 
 ######## Service Provider Settings ########
 
-ServiceProvider_Cpp_Files := service_provider/ecp.cpp service_provider/network_ra.cpp service_provider/service_provider.cpp service_provider/ias_ra.cpp 
+ServiceProvider_Cpp_Files := service_provider/ecp.cpp service_provider/network_ra.cpp service_provider/service_provider.cpp service_provider/ias_ra.cpp
 ServiceProvider_Include_Paths := -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport -Isample_libcrypto
 
 ServiceProvider_C_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes -I$(SGX_SDK)/include -Isample_libcrypto
@@ -129,11 +129,11 @@ else
 endif
 Crypto_Library_Name := sgx_tcrypto
 
-Enclave_Cpp_Files := isv_enclave/isv_enclave.cpp isv_enclave/TinyJS.cpp isv_enclave/TinyJS_Functions.cpp isv_enclave/TinyJS_MathFunctions.cpp
-Enclave_Include_Paths := -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport
+Enclave_Cpp_Files := isv_enclave/isv_enclave.cpp isv_enclave/TinyJS.cpp isv_enclave/TinyJS_Functions.cpp isv_enclave/TinyJS_MathFunctions.cpp isv_enclave/sgx_display/bmp.cpp isv_enclave/sgx_display/sgx_display.cpp
+Enclave_Include_Paths := -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport -Iisv_enclave/
 
 Enclave_C_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Enclave_Include_Paths)
-Enclave_Cpp_Flags := $(Enclave_C_Flags) -std=c++03 -nostdinc++
+Enclave_Cpp_Flags := $(Enclave_C_Flags) -std=c++11 -nostdinc++
 
 # To generate a proper enclave, it is recommended to follow below guideline to link the trusted libraries:
 #    1. Link sgx_trts with the `--whole-archive' and `--no-whole-archive' options,
@@ -148,7 +148,7 @@ Enclave_Link_Flags := $(SGX_COMMON_CFLAGS) -Wl,--no-undefined -nostdlib -nodefau
 	-Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined \
 	-Wl,-pie,-eenclave_entry -Wl,--export-dynamic  \
 	-Wl,--defsym,__ImageBase=0 \
-	-Wl,--version-script=isv_enclave/isv_enclave.lds 
+	-Wl,--version-script=isv_enclave/isv_enclave.lds
 
 Enclave_Cpp_Objects := $(Enclave_Cpp_Files:.cpp=.o)
 
@@ -202,7 +202,7 @@ endif
 
 run: all
 ifneq ($(Build_Mode), HW_RELEASE)
-	@$(CURDIR)/$(App_Name) 	
+	@$(CURDIR)/$(App_Name)
 	@echo "RUN  =>  $(App_Name) [$(SGX_MODE)|$(SGX_ARCH), OK]"
 endif
 
@@ -218,7 +218,7 @@ isv_app/isv_enclave_u.c: $(SGX_EDGER8R) isv_enclave/isv_enclave.edl
 	@echo "GEN  =>  $@"
 
 isv_app/isv_enclave_u.o: isv_app/isv_enclave_u.c
-	@$(CC) $(App_C_Flags) -c $< -o $@
+	@$(CXX) $(App_C_Flags) -c $< -o $@
 	@echo "CC   <=  $<"
 
 isv_app/%.o: isv_app/%.cpp
@@ -247,7 +247,7 @@ isv_enclave/isv_enclave_t.c: $(SGX_EDGER8R) isv_enclave/isv_enclave.edl
 	@echo "GEN  =>  $@"
 
 isv_enclave/isv_enclave_t.o: isv_enclave/isv_enclave_t.c
-	@$(CC) $(Enclave_C_Flags) -c $< -o $@
+	@$(CXX) $(Enclave_C_Flags) -c $< -o $@
 	@echo "CC   <=  $<"
 
 isv_enclave/%.o: isv_enclave/%.cpp
