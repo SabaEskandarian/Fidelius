@@ -44,7 +44,7 @@ extern std::string origin;
  * out_len: total length of the message
  * form_id: form_id string
  */
-void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, char *form_id)
+void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form_id)
 {
   uint8_t *p_aad = output;
   uint16_t seq = htons(seq_no);
@@ -161,7 +161,7 @@ static uint32_t add_bitmap_data(uint8_t *output, uint16_t x, uint16_t y,
  * out_len: total length of the message
  * form_id: form_id string
  */
-void create_remove_overlay_msg(uint8_t *output, uint32_t *out_len, char *form_id)
+void create_remove_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form_id)
 {
   uint8_t *p_aad = output;
   uint8_t op = OP_ADD_OVERLAY;

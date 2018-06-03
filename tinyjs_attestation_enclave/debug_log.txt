@@ -1,0 +1,20 @@
+hello from the enclave manager!
+
+INIT enclave with origin: dummyOrigin
+
+
+ADD FORM with name: loginform signature: [-1216807709,-2007712283,-1693291739,-1474017587,545734237,1361510415,690364433,-1635637106,546541908,-1838189346,1372888665,-2097283544,-179730107,-600103064,-413522106,-1720946426]
+	ADD INPUT: username of type: text
+	ADD INPUT: password of type: text
+
+
+FOCUS on form: loginform input: undefined at: 73.2969, 58.4375 width: 169 height: 17
+
+
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: a
