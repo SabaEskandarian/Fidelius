@@ -70,7 +70,9 @@ enclave {
 
         public sgx_status_t submit_form([in, string] const char* formName, [out,size=encr_size] uint8_t* dest, uint32_t encr_size, [out,count=16] uint8_t* gcm_mac);
 
-        public sgx_status_t get_keyboard_chars([user_check] uint8_t *p_src, uint32_t src_len, [in] uint8_t *p_iv,  [in] sgx_aes_gcm_128bit_tag_t *p_in_mac);
+        public sgx_status_t gcm_decrypt([user_check] uint8_t *p_src, uint32_t src_len, [in, size=1000] uint8_t *p_dst, [in] uint8_t *p_iv,  [in] sgx_aes_gcm_128bit_tag_t *p_in_mac);
+        
+        public sgx_status_t get_keyboard_chars([in, size = 29] uint8_t *p_src);
     };
 
 };

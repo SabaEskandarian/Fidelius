@@ -39,8 +39,10 @@
 #include <map>
 #include <stdlib.h>
 #include <vector>
-
-
+#include <mutex>
+#include <condition_variable>
+#include <thread>
+#include "keyboard_driver.h"
 
 ///////////////////////////////////
 #include <stdarg.h>
@@ -87,6 +89,8 @@ uint8_t* attestation_msg_samples[] =
     { attestation_msg_sample1, attestation_msg_sample2};
 
     using namespace std;
+
+KeyboardDriver KB("./keyboard_test", "empty");
 
 void ocall_print_string(const char *str)
 {
@@ -209,15 +213,32 @@ int eventsUntilCloseLog = 5;
 
 bool runningManager = true;
 ofstream myfile;
+pair<string, string> focusInput;
+condition_variable_any cv;
+mutex keyboard_mutex;
 
-void onBlur(string formName, string inputName, double mouseX, double mouseY) {
-	//TO DO: make ecall for blur event
-	if (DEBUG_MODE) myfile << "BLUR on form: " << formName << " input: " << inputName << " at: " << mouseX << ", " << mouseY << endl;
+
+void handleOnBlur(string formName, string inputName, double mouseX, double mouseY) {
+    //TO DO: make ecall for blur event
+    if (DEBUG_MODE) myfile << "BLUR on form: " << formName << " input: " << inputName << " at: " << mouseX << ", " << mouseY << endl;
+    // focusInput = make_pair("","");
+    // uint8_t b = 0;
+    // KB.changeMode(&b, 1);
+    // cv.notify_all();
 }
 
-void onFocus(string formName, string inputName, double mouseX, double mouseY) {
+
+void handleOnFocus(string formName, string inputName, double mouseX, double mouseY, double height, double width) {
 	//TO DO: make ecall for focus event
-	if (DEBUG_MODE) myfile << "FOCUS on form: " << formName << " input: " << inputName << " at: " << mouseX << ", " << mouseY << endl;
+    if (DEBUG_MODE) myfile << "FOCUS on form: " << formName << " input: " << inputName << " at: "
+        << mouseX << ", " << mouseY 
+        << " width: " << width 
+        << " height: " << height << endl;
+
+    /*focusInput = make_pair(formName,inputName);
+    uint8_t b = 1;
+    KB.changeMode(&b, 1);
+    cv.notify_all();*/
 }
 
 void addInput(string name, string input_i, string type) {
@@ -256,12 +277,12 @@ void addScript(string signature, string name) {
 
 
 
-void initializeEnclave(int origin) {
+void initializeEnclave(string origin) {
 	//TO DO: write code to initialize an enclave, should be similar to SampleEnclave init()
 	if (DEBUG_MODE) myfile << "INIT enclave with origin: " << origin << endl;
 }
 
-void terminateEnclave(int origin,sgx_enclave_id_t enclave_id) {
+void terminateEnclave(string origin,sgx_enclave_id_t enclave_id) {
 	//TO DO: write code to terminate an enclave
   //sgx_destroy_enclave(enclave_id);
 	if (DEBUG_MODE) myfile << "TERMINATE enclave with origin: " << origin << endl;
@@ -323,13 +344,13 @@ bool parseMessage(string message,sgx_enclave_id_t enclave_id) {
 
 	switch(command) {
 		case ON_BLUR:
-			onBlur(argv[1], argv[2], stod(argv[3], NULL), stod(argv[4], NULL));
+            handleOnBlur(argv[1], argv[2], stod(argv[3], NULL), stod(argv[4], NULL));
 			break;
 		case ON_FOCUS:
-			onFocus(argv[1], argv[2], stod(argv[3], NULL), stod(argv[4], NULL));
+            handleOnFocus(argv[1], argv[2], stod(argv[3], NULL), stod(argv[4], NULL), stod(argv[5], NULL), stod(argv[6], NULL));
 			break;
 		case INITIALIZE_ENCLAVE:
-			initializeEnclave(stod(argv[1], NULL));
+            initializeEnclave(argv[1]);
 			break;
 		case ADD_FORM:
 			addForm(argv);
@@ -337,11 +358,8 @@ bool parseMessage(string message,sgx_enclave_id_t enclave_id) {
 		case ADD_SCRIPT:
 			addScript(argv[1], argv[2]);
 			break;
-		case ADD_INPUT:
-			//addInput(argv[1], argv[2]);
-			break;
 		case TERMINATE_ENCLAVE:
-			terminateEnclave(stod(argv[1], NULL),enclave_id);
+			terminateEnclave(argv[1], enclave_id);
 			break;
 		case SUBMIT_HTTP_REQ:
 			submitHttpReq(argv[1]);
@@ -357,7 +375,27 @@ bool parseMessage(string message,sgx_enclave_id_t enclave_id) {
 	return true;
 }
 
+void listenForKeyboard(sgx_enclave_id_t enclave_id) {
+    uint8_t keyboardBuff[60] = {0};
+    while(true) {
+        unique_lock<mutex> lk(keyboard_mutex);
+        cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
+
+        KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
+        sgx_status_t ret;
+        get_keyboard_chars(enclave_id, &ret, keyboardBuff); //make keyboard ECALL
+        //make display ECALL
+    }
+}
+
+
 void sendMessage(string message) {
+    unsigned int len = message.length();
+     cout  << char((len>>0) & 0xFF)
+           << char((len>>8) & 0xFF)
+           << char((len>>16) & 0xFF)
+           << char((len>>24) & 0xFF)
+           << message << endl;
     // Collect the length of the message
     /*unsigned int len = message.length();
     // Now we can output our message
@@ -916,8 +954,6 @@ CLEANUP:
     SAFE_FREE(p_msg3_full);
     SAFE_FREE(p_msg1_full);
     SAFE_FREE(p_msg0_full);
-    sgx_destroy_enclave(enclave_id);
-     fclose(OUTPUT);
 
     // enclave manager main code
 	//fprintf(stdout, "\n help");
@@ -930,7 +966,7 @@ CLEANUP:
       
 
     std::string oneLine = "";
-
+    thread test_thread(listenForKeyboard, enclave_id);
       while (1){
           unsigned int length = 0;
           //read the first four bytes (=> Length)
@@ -984,6 +1020,10 @@ CLEANUP:
       }
       myfile << "SHUTTING DOWN EM" << endl;
       myfile.close();
+
+    sgx_destroy_enclave(enclave_id);
+    fclose(OUTPUT);
+
 
 	fclose(stderr);
     ////////////////////////////////////

@@ -839,3 +839,59 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src, uint32_t src_len, uint8_t *p_iv,
 
     return status;
 }
+
+//START OF KEYBOARD STUFF
+sgx_status_t get_keyboard_chars(uint8_t *p_src){
+    
+    if(&curForm == &nullForm || &curInput == &nullInput) {
+        printf_enc("No input in focus.");
+        return SGX_ERROR_INVALID_PARAMETER;
+    }
+
+
+ //call function to get nextchar (decrypted)
+    uint8_t ciphertext[1];
+    uint8_t iv[12];
+    uint8_t tag[16];
+
+  ciphertext[0] = p_src[0]; 
+  
+  for (int i = 1; i<17; i++){
+    tag[i-1] = p_src[i];
+  }
+  for (int i = 17; i<29; i++){
+    iv[i-17] = p_src[i];  
+  }
+
+    uint8_t p_char[1]; //initialize a buffer
+    
+    sgx_status_t status;
+    
+    status = gcm_decrypt(&ciphertext[0],1,&p_char[0], &iv[0], &tag);
+    if (p_char[0] == 0x7A){//letter z
+            p_char[0] = -1; //basically doing nothing
+    }
+    else{
+        curInput.value += (std::string) (char*) &p_char;
+    }
+    printf_enc("Char obtained: %x", p_char[0] );    
+    printf_enc("new value: %s", curInput.value);
+    return status;
+}
+
+sgx_status_t gcm_decrypt(uint8_t *p_src, uint32_t src_len, uint8_t *p_dst, uint8_t *p_iv,  sgx_aes_gcm_128bit_tag_t *p_in_mac){
+    sgx_status_t status;
+    printf_enc("Executing gcm_decrypt function from enclave...");
+    const sgx_aes_gcm_128bit_key_t p_key = {
+         0x24, 0xa3, 0xe5, 0xad, 0x48, 0xa7, 0xa6, 0xb1,
+         0x98, 0xfe, 0x35, 0xfb, 0xe1, 0x6c, 0x66, 0x85
+        };
+    
+    status = sgx_rijndael128GCM_decrypt(&p_key,p_src, src_len, p_dst, p_iv, 12, NULL, 0, p_in_mac);
+    for (int i=0; i<src_len; i++){
+        printf_enc("Decrypted Characters(in Enclave):%x", p_dst[i]);
+    }
+    
+    printf_enc("Status_decrypt: %x\n", status);
+    return status;
+}

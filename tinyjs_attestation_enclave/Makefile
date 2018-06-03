@@ -77,8 +77,8 @@ else
 	Urts_Library_Name := sgx_urts
 endif
 
-App_Cpp_Files := isv_app/isv_app.cpp isv_app/sgx_display/btchannel.cpp
-App_Include_Paths := -Iservice_provider -I$(SGX_SDK)/include -Iisv_app/sgx_display
+App_Cpp_Files := isv_app/isv_app.cpp isv_app/sgx_display/btchannel.cpp isv_app/sgx_keyboard/keyboard_driver.cpp
+App_Include_Paths := -Iservice_provider -I$(SGX_SDK)/include -Iisv_app/sgx_display -Iisv_app/sgx_keyboard
 
 App_C_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes $(App_Include_Paths)
 
