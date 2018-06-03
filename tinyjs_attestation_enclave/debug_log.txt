@@ -3,12 +3,12 @@ hello from the enclave manager!
 INIT enclave with origin: dummyOrigin
 
 
-ADD FORM with name: loginform signature: [-1216807709,-2007712283,-1693291739,-1474017587,545734237,1361510415,690364433,-1635637106,546541908,-1838189346,1372888665,-2097283544,-179730107,-600103064,-413522106,-1720946426]
-	ADD INPUT: username of type: text
-	ADD INPUT: password of type: text
+ADD FORM with name: loginform signature: [1006904108,1785308110,-611228278,106652276,36860072,-1467466343,1316525333,1927391681,150136035,1273156005,-1701746125,200155642,1879041690,785218636,-173029879,-1944062102]
+	ADD INPUT: username (130,0) 
+	ADD INPUT: password (124,31) 
 
 
-FOCUS on form: loginform input: undefined at: 73.2969, 58.4375 width: 169 height: 17
+FOCUS on form: loginform input: undefined at: 130.306, 87.6562 width: 300.444 height: 25.5
 
 
 KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
@@ -18,3 +18,71 @@ Status_decrypt: 0
 
 Char obtained: 61
 new value: a
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aa
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aaa
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aaaa
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aaaaa
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aaaaaa
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aaaaaaa
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aaaaaaaa
+BLUR on form: loginform input: undefined at: 73.2969, 58.4375
+
+
+FOCUS on form: loginform input: undefined at: 124.056, 119.156 width: 300.444 height: 25.5
+
+
+BLUR on form: loginform input: undefined at: 69.7812, 79.4375
+
+
+FOCUS on form: loginform input: undefined at: 130.306, 87.6562 width: 300.444 height: 25.5
+
+
+BLUR on form: loginform input: undefined at: 73.2969, 58.4375
+
+
+FOCUS on form: loginform input: undefined at: 124.056, 119.156 width: 300.444 height: 25.5
+
+
+SHUTTING DOWN EM

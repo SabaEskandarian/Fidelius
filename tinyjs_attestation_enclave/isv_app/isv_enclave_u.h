@@ -35,8 +35,8 @@ sgx_status_t verify_att_result_mac(sgx_enclave_id_t eid, sgx_status_t* retval, s
 sgx_status_t put_secret_data(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t context, uint8_t* p_secret, uint32_t secret_size, uint8_t* gcm_mac);
 sgx_status_t get_mac_key(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* p_mac, uint32_t mac_size, uint8_t* gcm_mac);
 sgx_status_t run_js(sgx_enclave_id_t eid, sgx_status_t* retval, char* code, size_t len);
-sgx_status_t add_form(sgx_enclave_id_t eid, sgx_status_t* retval, char* name, size_t len, char* origin, size_t origin_len, uint16_t x, uint16_t y);
-sgx_status_t add_input(sgx_enclave_id_t eid, sgx_status_t* retval, char* name, size_t len1, char* input_i, size_t len2, uint8_t* sig_form, size_t sig_form_size, int validate);
+sgx_status_t add_form(sgx_enclave_id_t eid, sgx_status_t* retval, const char* name, size_t len, const char* origin, size_t origin_len, uint16_t x, uint16_t y);
+sgx_status_t add_input(sgx_enclave_id_t eid, sgx_status_t* retval, const char* name, size_t len1, const char* input_i, size_t len2, const uint8_t* sig_form, size_t sig_form_size, int validate, uint16_t x, uint16_t y, uint16_t height, uint16_t width);
 sgx_status_t onFocus(sgx_enclave_id_t eid, sgx_status_t* retval, const char* formName, const char* inputName, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 sgx_status_t onBlur(sgx_enclave_id_t eid, sgx_status_t* retval);
 sgx_status_t form_len(sgx_enclave_id_t eid, uint32_t* retval, const char* formName);

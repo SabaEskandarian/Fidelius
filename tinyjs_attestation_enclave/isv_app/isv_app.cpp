@@ -84,8 +84,8 @@
 
 #define ENCLAVE_PATH "isv_enclave.signed.so"
 
-double X_SCALE = 1920.0/1080;
-double Y_SCALE = 1080.0/720;
+double SCALE_X = 1920.0/1080;
+double SCALE_Y = 1080.0/720;
 
 uint8_t* msg1_samples[] = { msg1_sample1, msg1_sample2 };
 uint8_t* msg2_samples[] = { msg2_sample1, msg2_sample2 };
@@ -219,7 +219,6 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 #define INITIALIZE_ENCLAVE 2
 #define ADD_FORM 3
 #define ADD_SCRIPT 4
-#define ADD_INPUT 5
 #define TERMINATE_ENCLAVE 6
 #define SUBMIT_HTTP_REQ 7
 #define SHUTDOWN_EM 8
@@ -229,12 +228,13 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 this ivar is for debugging only, it will close the debug
 log after the EM recieves/parses the specified number of commands.
 */
-int eventsUntilCloseLog = 5;
+int eventsUntilCloseLog = 9;
 
 bool runningManager = true;
 pair<string, string> focusInput;
 condition_variable_any cv;
 mutex keyboard_mutex;
+sgx_enclave_id_t enclave_id;
 
 
 void handleOnBlur(string formName, string inputName, double mouseX, double mouseY) {
@@ -243,40 +243,55 @@ void handleOnBlur(string formName, string inputName, double mouseX, double mouse
     focusInput = make_pair("","");
     uint8_t b = 0;
     KB.changeMode(&b, 1);
+    sgx_status_t ret;
+    onBlur(enclave_id, &ret); //ECALL
     cv.notify_all();
 }
 
 
-void handleOnFocus(string formName, string inputName, double mouseX, double mouseY, double height, double width) {
+void handleOnFocus(string formName, string inputName, double x, double y, double h, double w) {
 	//TO DO: make ecall for focus event
+    x *= SCALE_X;
+    y *= SCALE_Y;
+    h *= SCALE_Y;
+    w *= SCALE_X;
+
     if (DEBUG_MODE) myfile << "FOCUS on form: " << formName << " input: " << inputName << " at: "
-        << mouseX << ", " << mouseY 
-    << " width: " << width 
-    << " height: " << height << endl;
+        << x << ", " << y 
+    << " width: " << w 
+    << " height: " << h << endl;
 
     focusInput = make_pair(formName,inputName);
     uint8_t b = 1;
     KB.changeMode(&b, 1);
+    sgx_status_t ret;
+    onFocus(enclave_id, &ret, formName.c_str(), inputName.c_str(), 
+        (uint16_t)x, (uint16_t)y, (uint16_t)w, (uint16_t)h); //ECALL
     cv.notify_all();
-}
-
-void addInput(string name, string input_i, string type) {
-	//TO DO: make ecall for adding input
-	if (DEBUG_MODE) myfile << "\tADD INPUT: " << input_i << " of type: " << type << endl;
 }
 
 void addForm(vector<string> argv) {
 	//TO DO: make ecall for adding a form
+    sgx_status_t ret;
 	string name = argv[1];
 	string signature = argv[2];
-	//string type = argv[3];
-
-	if (DEBUG_MODE) {
-		myfile << "ADD FORM with name: " << name  << " signature: " << signature << endl;
-		for (int i = 4; i < argv.size(); i+=2) {
-			//myfile << "input " << i << ": " + argv[i] << endl;
-			addInput(name, argv[i+1], argv[i]);
-		}
+    string origin = argv[3];
+    uint16_t formX = (uint16_t)(stod(argv[4], NULL)*SCALE_X);
+    uint16_t formY = (uint16_t)(stod(argv[5], NULL)*SCALE_Y);
+    add_form(enclave_id, &ret, name.c_str(), name.length(), 
+        origin.c_str(), origin.length(), formX, formY); //ECALL
+	
+	myfile << "ADD FORM with name: " << name  << " signature: " << signature << endl;
+	for (int i = 6; i < argv.size(); i+=5) {
+        string inputName = argv[i];
+        uint16_t w = (uint16_t)(stod(argv[i+1], NULL)*SCALE_X);
+        uint16_t h = (uint16_t)(stod(argv[i+2], NULL)*SCALE_Y);
+        uint16_t x = (uint16_t)(stod(argv[i+3], NULL)*SCALE_X);
+        uint16_t y = (uint16_t)(stod(argv[i+4], NULL)*SCALE_Y);
+        if (DEBUG_MODE) myfile << "\tADD INPUT: " << inputName << " (" << x << "," << y << ") " << endl;
+        add_input(enclave_id, &ret, name.c_str(), name.length(), inputName.c_str(), inputName.length(),
+                    (uint8_t*)(signature.c_str()), signature.length(), 
+                    (i+5 < argv.size()) ? 0 : 1, x, y, h, w); //ECALL
 	}
 }
 
@@ -301,10 +316,10 @@ void initializeEnclave(string origin) {
 	if (DEBUG_MODE) myfile << "INIT enclave with origin: " << origin << endl;
 }
 
-void terminateEnclave(string origin,sgx_enclave_id_t enclave_id) {
+void terminateEnclave(string origin) {
 	//TO DO: write code to terminate an enclave
-  //sgx_destroy_enclave(enclave_id);
-	if (DEBUG_MODE) myfile << "TERMINATE enclave with origin: " << origin << endl;
+    sgx_destroy_enclave(enclave_id);
+	if (DEBUG_MODE) myfile << "TERMINATE enclave with id: " << enclave_id << endl;
 }
 
 void submitHttpReq(string request) {
@@ -330,7 +345,7 @@ void parseScript(string message) {
 	}
 }
 
-bool parseMessage(string message,sgx_enclave_id_t enclave_id) {
+bool parseMessage(string message) {
 	eventsUntilCloseLog--;
 
 	vector<string> argv;
@@ -378,7 +393,7 @@ bool parseMessage(string message,sgx_enclave_id_t enclave_id) {
       addScript(argv[1], argv[2]);
       break;
       case TERMINATE_ENCLAVE:
-      terminateEnclave(argv[1], enclave_id);
+      terminateEnclave(argv[1]);
       break;
       case SUBMIT_HTTP_REQ:
       submitHttpReq(argv[1]);
@@ -394,9 +409,12 @@ bool parseMessage(string message,sgx_enclave_id_t enclave_id) {
   return true;
 }
 
-void listenForKeyboard(sgx_enclave_id_t enclave_id) {
-    BluetoothChannel connection;
-    connection.channel_open();
+void listenForKeyboard() {
+    /*BluetoothChannel connection;
+    if (connection.channel_open() < 0) {
+        myfile << "FAILED BT CONNECT" << endl;
+        return;
+    }*/
     uint8_t keyboardBuff[58] = {0};
     while(true) {
         unique_lock<mutex> lk(keyboard_mutex);
@@ -407,15 +425,17 @@ void listenForKeyboard(sgx_enclave_id_t enclave_id) {
         sgx_status_t ret;
         myfile << "KEYB BUFFER: " << bytebuff << endl;
         get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
-        uint8_t outBuff[524288];
+        /*uint8_t outBuff[524288];
         uint32_t out_len;
         create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
-        connection.channel_send((char *)outBuff, (int)out_len);
+        if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
+            myfile << "FAILED BT SEND" << endl;
+        }*/
     }
-    uint32_t out_len;
+    /*uint32_t out_len;
     uint8_t outBuff[524288];
     create_remove_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str());
-    connection.channel_close();
+    connection.channel_close();*/
 }
 
 
@@ -451,7 +471,7 @@ int main(int argc, char* argv[])
     ra_samp_response_header_t *p_msg2_full = NULL;
     sgx_ra_msg3_t *p_msg3 = NULL;
     ra_samp_response_header_t* p_att_result_msg_full = NULL;
-    sgx_enclave_id_t enclave_id = 0;
+    enclave_id = 0;
     int enclave_lost_retry_time = 1;
     int busy_retry_time = 4;
     sgx_ra_context_t context = INT_MAX;
@@ -996,7 +1016,9 @@ if(argc > 2)
 
 
     std::string oneLine = "";
-    thread test_thread(listenForKeyboard, enclave_id);
+    thread test_thread(listenForKeyboard);
+
+    //addForm(vector<string>({"3", "myForm", "sig", "origin", "123", "312", "inp1", "1", "1", "1", "1", "inp2", "12", "32", "2", "2"}));
     while (1){
       unsigned int length = 0;
           //read the first four bytes (=> Length)
@@ -1015,7 +1037,7 @@ if(argc > 2)
 
       msg = msg.substr(1,msg.length()-2);
 
-      if (!parseMessage(msg,enclave_id)) {
+      if (!parseMessage(msg)) {
         break;
     }
 }

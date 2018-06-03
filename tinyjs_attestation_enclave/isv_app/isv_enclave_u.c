@@ -61,6 +61,10 @@ typedef struct ms_add_input_t {
 	uint8_t* ms_sig_form;
 	size_t ms_sig_form_size;
 	int ms_validate;
+	uint16_t ms_x;
+	uint16_t ms_y;
+	uint16_t ms_height;
+	uint16_t ms_width;
 } ms_add_input_t;
 
 typedef struct ms_onFocus_t {
@@ -380,13 +384,13 @@ sgx_status_t run_js(sgx_enclave_id_t eid, sgx_status_t* retval, char* code, size
 	return status;
 }
 
-sgx_status_t add_form(sgx_enclave_id_t eid, sgx_status_t* retval, char* name, size_t len, char* origin, size_t origin_len, uint16_t x, uint16_t y)
+sgx_status_t add_form(sgx_enclave_id_t eid, sgx_status_t* retval, const char* name, size_t len, const char* origin, size_t origin_len, uint16_t x, uint16_t y)
 {
 	sgx_status_t status;
 	ms_add_form_t ms;
-	ms.ms_name = name;
+	ms.ms_name = (char*)name;
 	ms.ms_len = len;
-	ms.ms_origin = origin;
+	ms.ms_origin = (char*)origin;
 	ms.ms_origin_len = origin_len;
 	ms.ms_x = x;
 	ms.ms_y = y;
@@ -395,17 +399,21 @@ sgx_status_t add_form(sgx_enclave_id_t eid, sgx_status_t* retval, char* name, si
 	return status;
 }
 
-sgx_status_t add_input(sgx_enclave_id_t eid, sgx_status_t* retval, char* name, size_t len1, char* input_i, size_t len2, uint8_t* sig_form, size_t sig_form_size, int validate)
+sgx_status_t add_input(sgx_enclave_id_t eid, sgx_status_t* retval, const char* name, size_t len1, const char* input_i, size_t len2, const uint8_t* sig_form, size_t sig_form_size, int validate, uint16_t x, uint16_t y, uint16_t height, uint16_t width)
 {
 	sgx_status_t status;
 	ms_add_input_t ms;
-	ms.ms_name = name;
+	ms.ms_name = (char*)name;
 	ms.ms_len1 = len1;
-	ms.ms_input_i = input_i;
+	ms.ms_input_i = (char*)input_i;
 	ms.ms_len2 = len2;
-	ms.ms_sig_form = sig_form;
+	ms.ms_sig_form = (uint8_t*)sig_form;
 	ms.ms_sig_form_size = sig_form_size;
 	ms.ms_validate = validate;
+	ms.ms_x = x;
+	ms.ms_y = y;
+	ms.ms_height = height;
+	ms.ms_width = width;
 	status = sgx_ecall(eid, 7, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;

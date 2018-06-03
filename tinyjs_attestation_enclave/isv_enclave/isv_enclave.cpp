@@ -511,7 +511,7 @@ std::string parse_form_secure(form f, uint8_t* p_gcm_mac) {
 }
 
 //copys a string into the enclave
-std::string copyString(char* s, size_t len) {
+std::string copyString(const char* s, size_t len) {
     char es_temp[len];
     memcpy(es_temp, s, len);
     std::string es = std::string(es_temp);
@@ -569,8 +569,8 @@ sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
 }
 
 //adds a new form to the internal list of forms
-sgx_status_t add_form(char* name, size_t len, 
-                        char* this_origin, size_t origin_len, uint16_t x, uint16_t y) {
+sgx_status_t add_form(const char* name, size_t len, 
+                        const char* this_origin, size_t origin_len, uint16_t x, uint16_t y) {
 
    std::string oName = copyString(this_origin, origin_len);
     if (origin != "" && origin != oName) {
@@ -591,8 +591,8 @@ sgx_status_t add_form(char* name, size_t len,
 }
 
 //adds a new input field to a form
-sgx_status_t add_input(char * name, size_t len1, char* input_i, size_t len2,
-                    uint8_t *p_sig_form, size_t sig_form_size, int val) {
+sgx_status_t add_input(const char * name, size_t len1, const char* input_i, size_t len2,
+                    const uint8_t *p_sig_form, size_t sig_form_size, int val, uint16_t x, uint16_t y, uint16_t height, uint16_t width) {
     
     std::string eName = copyString(name, len1);
     std::string eInput = copyString(input_i, len2);
@@ -612,6 +612,10 @@ sgx_status_t add_input(char * name, size_t len1, char* input_i, size_t len2,
             return SGX_ERROR_INVALID_PARAMETER; //error if input already exists
         } else {
             input new_input;
+            new_input.x = x;
+            new_input.y = y;
+            new_input.width = width;
+            new_input.height = height;
             inputs.insert(std::pair<std::string, input>(eInput, new_input));
             f.inputs = inputs;
             
@@ -854,7 +858,7 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
             p_char[0] = -1; //basically doing nothing
     }
     else{
-        curInput.value += (std::string) (char*) &p_char;
+        curInput.value += p_char[0];
     }
     printf_enc("Char obtained: %x", p_char[0] );    
     printf_enc("new value: %s", curInput.value);

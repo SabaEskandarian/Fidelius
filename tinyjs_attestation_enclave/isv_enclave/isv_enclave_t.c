@@ -78,6 +78,10 @@ typedef struct ms_add_input_t {
 	uint8_t* ms_sig_form;
 	size_t ms_sig_form_size;
 	int ms_validate;
+	uint16_t ms_x;
+	uint16_t ms_y;
+	uint16_t ms_height;
+	uint16_t ms_width;
 } ms_add_input_t;
 
 typedef struct ms_onFocus_t {
@@ -526,7 +530,7 @@ static sgx_status_t SGX_CDECL sgx_add_form(void* pms)
 			goto err;
 		}
 
-		memcpy(_in_name, _tmp_name, _len_name);
+		memcpy((void*)_in_name, _tmp_name, _len_name);
 	}
 	if (_tmp_origin != NULL && _len_origin != 0) {
 		_in_origin = (char*)malloc(_len_origin);
@@ -535,13 +539,13 @@ static sgx_status_t SGX_CDECL sgx_add_form(void* pms)
 			goto err;
 		}
 
-		memcpy(_in_origin, _tmp_origin, _len_origin);
+		memcpy((void*)_in_origin, _tmp_origin, _len_origin);
 	}
 
-	ms->ms_retval = add_form(_in_name, _tmp_len, _in_origin, _tmp_origin_len, ms->ms_x, ms->ms_y);
+	ms->ms_retval = add_form((const char*)_in_name, _tmp_len, (const char*)_in_origin, _tmp_origin_len, ms->ms_x, ms->ms_y);
 err:
-	if (_in_name) free(_in_name);
-	if (_in_origin) free(_in_origin);
+	if (_in_name) free((void*)_in_name);
+	if (_in_origin) free((void*)_in_origin);
 
 	return status;
 }
@@ -584,7 +588,7 @@ static sgx_status_t SGX_CDECL sgx_add_input(void* pms)
 			goto err;
 		}
 
-		memcpy(_in_name, _tmp_name, _len_name);
+		memcpy((void*)_in_name, _tmp_name, _len_name);
 	}
 	if (_tmp_input_i != NULL && _len_input_i != 0) {
 		_in_input_i = (char*)malloc(_len_input_i);
@@ -593,7 +597,7 @@ static sgx_status_t SGX_CDECL sgx_add_input(void* pms)
 			goto err;
 		}
 
-		memcpy(_in_input_i, _tmp_input_i, _len_input_i);
+		memcpy((void*)_in_input_i, _tmp_input_i, _len_input_i);
 	}
 	if (_tmp_sig_form != NULL && _len_sig_form != 0) {
 		_in_sig_form = (uint8_t*)malloc(_len_sig_form);
@@ -602,14 +606,14 @@ static sgx_status_t SGX_CDECL sgx_add_input(void* pms)
 			goto err;
 		}
 
-		memcpy(_in_sig_form, _tmp_sig_form, _len_sig_form);
+		memcpy((void*)_in_sig_form, _tmp_sig_form, _len_sig_form);
 	}
 
-	ms->ms_retval = add_input(_in_name, _tmp_len1, _in_input_i, _tmp_len2, _in_sig_form, _tmp_sig_form_size, ms->ms_validate);
+	ms->ms_retval = add_input((const char*)_in_name, _tmp_len1, (const char*)_in_input_i, _tmp_len2, (const uint8_t*)_in_sig_form, _tmp_sig_form_size, ms->ms_validate, ms->ms_x, ms->ms_y, ms->ms_height, ms->ms_width);
 err:
-	if (_in_name) free(_in_name);
-	if (_in_input_i) free(_in_input_i);
-	if (_in_sig_form) free(_in_sig_form);
+	if (_in_name) free((void*)_in_name);
+	if (_in_input_i) free((void*)_in_input_i);
+	if (_in_sig_form) free((void*)_in_sig_form);
 
 	return status;
 }
