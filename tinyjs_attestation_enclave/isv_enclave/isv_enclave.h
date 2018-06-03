@@ -37,15 +37,35 @@
 #include <assert.h>
 #include "isv_enclave_t.h"
 #include <string>
+#include <map>
+#include <stdlib.h>
+
 
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+typedef struct input
+{
+    std::string value;
+    uint16_t x;
+    uint16_t y;
+    uint16_t width;
+    uint16_t height;
+} input;
+
+typedef struct form
+{
+    std::map<std::string, input> inputs;
+    uint16_t x;
+    uint16_t y;
+    bool validated;
+} form;
+
+
 void printf_enc(const char *fmt, ...);
 std::string intToString(int i);
-
 
 #if defined(__cplusplus)
 }

@@ -430,32 +430,13 @@ sgx_status_t put_secret_data(
 
 /////////////our stuff//////////////////////
 
-typedef struct input
-{
-    std::string value;
-    uint16_t x;
-    uint16_t y;
-    uint16_t width;
-    uint16_t height;
-} input;
-
-typedef struct form
-{
-    std::map<std::string, input> inputs;
-    std::string origin;
-    uint16_t x;
-    uint16_t y;
-    uint16_t width;
-    uint16_t height;
-    bool validated;
-} form;
-
 static const form nullForm = {};
 static const input nullInput = {};
 
 std::map<std::string, form> forms;
 form curForm = nullForm;
 input curInput = nullInput;
+std::string origin = "";
 
 void printForm(form f){
     printf_enc("# elements in form: %d\n", f.inputs.size());
@@ -589,20 +570,21 @@ sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
 
 //adds a new form to the internal list of forms
 sgx_status_t add_form(char* name, size_t len, 
-                        char* origin, size_t origin_len, uint16_t x, uint16_t y, 
-                        uint16_t width, uint16_t height) {
+                        char* this_origin, size_t origin_len, uint16_t x, uint16_t y) {
 
+   std::string oName = copyString(this_origin, origin_len);
+    if (origin != "" && origin != oName) {
+        return SGX_ERROR_INVALID_PARAMETER;
+    } else {
+        origin = oName;
+    }
     std::string eName = copyString(name, len);
     if(forms.count(eName) > 0) {
       return SGX_ERROR_INVALID_PARAMETER; //error if form already exists
     } else {
         form new_form;
-        std::string oName = copyString(origin, origin_len);
-        new_form.origin = oName;
         new_form.x = x;
         new_form.y = y;
-        new_form.width = width;
-        new_form.height = height;
         forms.insert(std::pair<std::string, form>(eName, new_form));
         return SGX_SUCCESS;
     }
