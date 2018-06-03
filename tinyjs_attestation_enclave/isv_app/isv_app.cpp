@@ -82,6 +82,7 @@
 
 #define ENCLAVE_PATH "isv_enclave.signed.so"
 
+
 uint8_t* msg1_samples[] = { msg1_sample1, msg1_sample2 };
 uint8_t* msg2_samples[] = { msg2_sample1, msg2_sample2 };
 uint8_t* msg3_samples[MSG3_BODY_SIZE] = { msg3_sample1, msg3_sample2 };
@@ -91,13 +92,30 @@ uint8_t* attestation_msg_samples[] =
     using namespace std;
 
 KeyboardDriver KB("./keyboard_test", "empty");
+ofstream myfile;
+
+/*uint8_t convert(char *target){
+    uint8_t number = (int)strtol(target, NULL, 16);
+    return number;
+}
+
+void hexStrtoBytes(char *char_stream, int stream_len, uint8_t *byte_array){
+    
+    
+    for (int i =0; i < stream_len; i = i +2){
+        char array[2];
+        array[0] = *(char_stream+i);
+        array[1] = *(char_stream+i+1);
+        byte_array[i/2] = convert(&array[0]);
+    }
+}*/
 
 void ocall_print_string(const char *str)
 {
     /* Proxy/Bridge will check the length and null-terminate
      * the input string to prevent buffer overflow.
      */
-    printf("%s", str);
+    myfile << str << endl;;
 }
 
 
@@ -192,7 +210,6 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 // enclave manager required functions
 
 #define DEBUG_MODE 1
-
 #define ON_BLUR 0
 #define ON_FOCUS 1
 #define INITIALIZE_ENCLAVE 2
@@ -212,7 +229,6 @@ log after the EM recieves/parses the specified number of commands.
 int eventsUntilCloseLog = 5;
 
 bool runningManager = true;
-ofstream myfile;
 pair<string, string> focusInput;
 condition_variable_any cv;
 mutex keyboard_mutex;
@@ -221,10 +237,10 @@ mutex keyboard_mutex;
 void handleOnBlur(string formName, string inputName, double mouseX, double mouseY) {
     //TO DO: make ecall for blur event
     if (DEBUG_MODE) myfile << "BLUR on form: " << formName << " input: " << inputName << " at: " << mouseX << ", " << mouseY << endl;
-    // focusInput = make_pair("","");
-    // uint8_t b = 0;
-    // KB.changeMode(&b, 1);
-    // cv.notify_all();
+     focusInput = make_pair("","");
+     uint8_t b = 0;
+     KB.changeMode(&b, 1);
+     cv.notify_all();
 }
 
 
@@ -235,10 +251,10 @@ void handleOnFocus(string formName, string inputName, double mouseX, double mous
         << " width: " << width 
         << " height: " << height << endl;
 
-    /*focusInput = make_pair(formName,inputName);
+    focusInput = make_pair(formName,inputName);
     uint8_t b = 1;
     KB.changeMode(&b, 1);
-    cv.notify_all();*/
+    cv.notify_all();
 }
 
 void addInput(string name, string input_i, string type) {
@@ -254,7 +270,7 @@ void addForm(vector<string> argv) {
 
 	if (DEBUG_MODE) {
 		myfile << "ADD FORM with name: " << name  << " signature: " << signature << endl;
-		for (int i = 3; i < argv.size(); i+=2) {
+		for (int i = 4; i < argv.size(); i+=2) {
 			//myfile << "input " << i << ": " + argv[i] << endl;
 			addInput(name, argv[i+1], argv[i]);
 		}
@@ -376,14 +392,16 @@ bool parseMessage(string message,sgx_enclave_id_t enclave_id) {
 }
 
 void listenForKeyboard(sgx_enclave_id_t enclave_id) {
-    uint8_t keyboardBuff[60] = {0};
+    uint8_t keyboardBuff[58] = {0};
     while(true) {
         unique_lock<mutex> lk(keyboard_mutex);
         cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
-
         KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
+        uint8_t bytebuff[29];
+        //hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
         sgx_status_t ret;
-        get_keyboard_chars(enclave_id, &ret, keyboardBuff); //make keyboard ECALL
+        myfile << "KEYB BUFFER: " /*<< bytebuff*/ << endl;
+        //get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
         //make display ECALL
     }
 }
@@ -959,8 +977,8 @@ CLEANUP:
 	//fprintf(stdout, "\n help");
         
 	myfile.open ("debug_log.txt");
-      myfile << "hello from the enclave manager!\n\n";
-//myfile << "SHUTTING DOWN EM" << endl;
+    myfile << "hello from the enclave manager!\n\n";
+    //myfile << "SHUTTING DOWN EM" << endl;
      
     freopen( "stderr.log", "w", stderr );
       

@@ -3,16 +3,9 @@ enclave {
         /* define ECALLs here. */
         public void create_add_overlay_msg([out,size=524288] uint8_t *output,
                                            [out] uint32_t *out_len,
-                                           [in, string] char *input,
-                                           uint8_t id,
-                                           uint16_t x,
-                                           uint16_t y,
-                                           uint16_t width,
-                                           uint16_t height);
-
+                                           [in, string] char *input);
         public void create_remove_overlay_msg([out,size=524288] uint8_t *output,
                                               [out] uint32_t *out_len,
-                                              uint8_t clear_all,
-                                              uint8_t id);
+                                              [in, string] char *input);
     };
 };

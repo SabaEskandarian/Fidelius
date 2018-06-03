@@ -16,10 +16,10 @@ KeyboardDriver::~KeyboardDriver()
 }
 
 int KeyboardDriver::openPorts() {
-  if ((_characterPortHandle = open(_characterPortName.c_str(), O_RDWR, 0666)) == -1) {
+  if ((_characterPortHandle = open(_characterPortName.c_str(), O_RDWR | O_NOCTTY | O_NDELAY, 0666)) == -1) {
     perror(_characterPortName.c_str());
   }
-  if ((_modePortHandle = open(_modePortName.c_str(), O_RDWR, 0666)) == -1) {
+  if ((_modePortHandle = open(_modePortName.c_str(), O_RDWR | O_NOCTTY | O_NDELAY, 0666)) == -1) {
     perror(_modePortName.c_str());
   }
   return ((_characterPortHandle != -1) && (_modePortHandle != -1));
@@ -52,18 +52,25 @@ int KeyboardDriver::getEncryptedKeyboardInput(uint8_t * p_dst, int len, bool blo
   //     long    tv_usec;        /* microseconds */
   //   };
 
-  fd_set rfds;
-  FD_ZERO(&rfds);
-  FD_SET(_characterPortHandle, &rfds);
-  if(select(_characterPortHandle + 1, &rfds, NULL, NULL, NULL) < 0) {
-    return -1;
-  }
+  // fd_set rfds;
+  // FD_ZERO(&rfds);
+  // FD_SET(_characterPortHandle, &rfds);
+  // if(select(_characterPortHandle + 1, &rfds, NULL, NULL, NULL) < 0) {
+  //   return -1;
+  // }
 
-  if (FD_ISSET(_characterPortHandle, &rfds) || block) {
-    // There is data to read on the relevant file descriptor.
-    int bytes_read = read(_characterPortHandle, p_dst, len);
-    return bytes_read; 
-  }
+  // if (FD_ISSET(_characterPortHandle, &rfds) || block) {
+  //   // There is data to read on the relevant file descriptor.
+  //   int bytes_read = read(_characterPortHandle, p_dst, len);
+  //   return bytes_read; 
+  //}
 
-  return 0;
+  int bytes_read = 0;
+  while (bytes_read < len) {
+    int to_read = len - bytes_read;
+    bytes_read += read(_characterPortHandle, p_dst + bytes_read, to_read);
+  }
+  
+  return bytes_read;
+  
 }

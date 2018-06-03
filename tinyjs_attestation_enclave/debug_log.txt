@@ -1,0 +1,77 @@
+hello from the enclave manager!
+
+INIT enclave with origin: dummyOrigin
+
+
+ADD FORM with name: payment signature: [-1234837781,1392023253,1302097043,-1000285022,-648300562,1550926654,607668161,-2022036578,1484170565,576122891,871181550,-1513679197,685450642,-783949598,2061183771,840736415]
+	ADD INPUT: holder of type: text
+	ADD INPUT: cc of type: text
+	ADD INPUT: cvv of type: text
+
+
+FOCUS on form: payment input: undefined at: 139.281, 58.4375 width: 169 height: 17
+
+
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: a
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aa
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aaa
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aaaa
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aaaaa
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aaaaaa
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aaaaaaa
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+Char obtained: 61
+new value: aaaaaaaa
+BLUR on form: payment input: undefined at: 139.281, 58.4375
+
+
+FOCUS on form: payment input: undefined at: 139.969, 79.4375 width: 169 height: 17
+
+
+SHUTTING DOWN EM
