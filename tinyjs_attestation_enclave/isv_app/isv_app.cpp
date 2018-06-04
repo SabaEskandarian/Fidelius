@@ -95,7 +95,7 @@ uint8_t* attestation_msg_samples[] =
 
 using namespace std;
 
-KeyboardDriver KB("./keyboard_test", "empty");
+KeyboardDriver KB("/dev/ttyACM0", "/dev/ttyACM1");
 ofstream myfile;
 
 uint8_t convert(char *target){
@@ -410,6 +410,8 @@ bool parseMessage(string message) {
 }
 
 void listenForKeyboard() {
+    myfile << "CREATED THREAD" << endl;
+    myfile.flush();
     /*BluetoothChannel connection;
     if (connection.channel_open() < 0) {
         myfile << "FAILED BT CONNECT" << endl;
@@ -417,13 +419,15 @@ void listenForKeyboard() {
     }*/
     uint8_t keyboardBuff[58] = {0};
     while(true) {
-        unique_lock<mutex> lk(keyboard_mutex);
-        cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
+        //unique_lock<mutex> lk(keyboard_mutex);
+        //cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
         KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
+        myfile << "got encrypted input" << endl;
         uint8_t bytebuff[29];
         hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
         sgx_status_t ret;
         myfile << "KEYB BUFFER: " << bytebuff << endl;
+        myfile << keyboardBuff << endl;
         get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
         /*uint8_t outBuff[524288];
         uint32_t out_len;
