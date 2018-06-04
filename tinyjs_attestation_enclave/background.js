@@ -1,4 +1,4 @@
-var nativePort = chrome.runtime.connectNative("com.google.chrome.example.echo");
+var nativePort = chrome.runtime.connectNative("com.google.chrome.fidelius.echo");
 chrome.browserAction.onClicked.addListener(function(tab) {
 
 /* Wait for message from HTMLParser. When a message is received, relay it to the
@@ -11,7 +11,7 @@ chrome.browserAction.onClicked.addListener(function(tab) {
         nativePort.postMessage(msg);
       });
 	   });
-
+    //chrome.tabs.executeScript(null, {file: "signature.js"});
     chrome.tabs.executeScript(null, {file: "syntaxChecker.js"});
     chrome.tabs.executeScript(null, {file: "htmlParser.js"});
 

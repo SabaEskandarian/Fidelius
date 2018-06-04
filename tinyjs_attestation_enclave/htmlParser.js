@@ -27,7 +27,7 @@ var currentFocus = null;
  */
 function getInputName(input) {
 	if (input.nodeName == "INPUT") {
-		if (input.hasAttribute("secureName")) return input.getAttribute("secureName");
+		if (input.hasAttribute("name")) return input.getAttribute("name");
 	};
 }
 
@@ -265,7 +265,7 @@ function initializeMessaging() {
 function main() {
 	initializeMessaging();
 	parseFormTags();
-	parseScriptTags();
+	//parseScriptTags();
 	if (!useEnclave) return;
 
 	var file = makeTextFile(scriptString + formString);
