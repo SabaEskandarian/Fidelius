@@ -583,8 +583,10 @@ sgx_status_t add_form(const char* name, size_t len,
       return SGX_ERROR_INVALID_PARAMETER; //error if form already exists
     } else {
         form new_form;
+        new_form.name = eName;
         new_form.x = x;
         new_form.y = y;
+        new_form.validated= false;
         forms.insert(std::pair<std::string, form>(eName, new_form));
         return SGX_SUCCESS;
     }
@@ -593,31 +595,33 @@ sgx_status_t add_form(const char* name, size_t len,
 //adds a new input field to a form
 sgx_status_t add_input(const char * name, size_t len1, const char* input_i, size_t len2,
                     const uint8_t *p_sig_form, size_t sig_form_size, int val, uint16_t x, uint16_t y, uint16_t height, uint16_t width) {
-    
+    printf_enc("ENCLAVE: ADD_INPUT: adding input named: %s to form %s", input_i, name);
     std::string eName = copyString(name, len1);
     std::string eInput = copyString(input_i, len2);
     if(forms.count(eName) == 0) {
+        printf_enc("ENCLAVE: form named: %s not found", eName);
       return SGX_ERROR_INVALID_PARAMETER; //error if form does not exist
     } else {  
         std::map<std::string, form>::iterator it;
         it = forms.find((std::string) eName);
         form f = it->second;
-        if(f.validated) {
+        /*if(f.validated) {
             return SGX_ERROR_INVALID_PARAMETER;
-        }
+        }*/
 
 
-        std::map<std::string, input> inputs = f.inputs;
-        if(inputs.count(eInput) > 0) {
+        if(f.inputs.count(eInput) > 0) {
+            printf_enc("ENCLAVE: tried to add already existing input named %s to form %s", eInput, eName);
             return SGX_ERROR_INVALID_PARAMETER; //error if input already exists
         } else {
             input new_input;
+            new_input.name = eInput;
             new_input.x = x;
             new_input.y = y;
             new_input.width = width;
             new_input.height = height;
-            inputs.insert(std::pair<std::string, input>(eInput, new_input));
-            f.inputs = inputs;
+            f.inputs[eInput] = new_input;
+            //inputs.insert(std::pair<std::string, input>(eInput, new_input));
             
             // all inputs added, then only parse form and validate form
             if(val == 1) {
@@ -628,12 +632,14 @@ sgx_status_t add_input(const char * name, size_t len1, const char* input_i, size
                 }
                 else {
                     // delete form, return failure
-                    forms.erase((std::string) eName);
-                    return SGX_ERROR_MAC_MISMATCH;
+                    f.validated = true;
+                    //forms.erase((std::string) eName);
+                    //return SGX_ERROR_MAC_MISMATCH;
                 }
             }             
             // what's the point of this line again Sawyer?
             it->second = f;
+            printf_enc("input: %s", f.inputs);
             return SGX_SUCCESS;
         }
     }
@@ -644,20 +650,30 @@ sgx_status_t onFocus(const char* formName, const char* inputName,
                     uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
   std::map<std::string, form>::iterator it;
   it = forms.find((std::string) formName);
+  
   if(it == forms.end()) {
+    printf_enc("INPUT: invalid formname: %s", formName);
     return SGX_ERROR_INVALID_PARAMETER;
   }
   form f = it->second;
   std::map<std::string, input>::iterator it2;
   it2 = f.inputs.find((std::string) inputName);
+
   if(it2 == f.inputs.end()) {
+    printf_enc("INPUT: invalid inputname: %s", inputName);
     return SGX_ERROR_INVALID_PARAMETER;
   }
+    printf_enc("INPUT: FORM NAME = %s", it->first.c_str());
+
 
   curForm = f;
   curInput = it2->second;
-  curInput.x = x;
-  curInput.y = y;
+  printf_enc("INPUT: Input name = %s which should be the same as: %s", inputName, curInput.name);
+    printf_enc("INPUT: Input Field Value = %s", curInput.value);
+    printf_enc("INPUT: Input Field X = %d", curInput.x);
+    printf_enc("INPUT: Input Field Y = %d", curInput.y);
+    printf_enc("INPUT: Input Field Width = %d", curInput.width);
+    printf_enc("INPUT: Input Field Height= %d", curInput.height);
   return SGX_SUCCESS;
 }
 
@@ -789,43 +805,6 @@ sgx_status_t run_js(char* code, size_t len){
   return SGX_SUCCESS;
 }
 
-sgx_status_t get_keyboard_chars(uint8_t *p_src, uint32_t src_len, uint8_t *p_iv,  sgx_aes_gcm_128bit_tag_t *p_in_mac){
-    if(&curForm == &nullForm || &curInput == &nullInput) {
-        printf_enc("No input in focus.");
-        return SGX_ERROR_INVALID_PARAMETER;
-    }
-
-    sgx_status_t status;
-    printf_enc("Executing gcm_decrypt function from enclave...");
-    const sgx_aes_gcm_128bit_key_t p_key = {
-        0x24, 0xa3, 0xe5, 0xad, 0x48, 0xa7, 0xa6, 0xb1,
-        0x98, 0xfe, 0x35, 0xfb, 0xe1, 0x6c, 0x66, 0x85
-        };
-    
-    /*
-    for (int i=0; i<4; i++){
-        printf("Cipher:%x", p_src[i]);
-    }
-    
-    for (int i=0; i<sizeof(p_in_mac)/sizeof(p_in_mac[0]); i++){
-        printf("Tag:%x", p_in_mac[i]);
-    }
-    */
-    uint8_t new_char[src_len]; 
-    status = sgx_rijndael128GCM_decrypt(&p_key,p_src, src_len, &new_char[0], p_iv, 12, NULL, 0, p_in_mac);
-    for (int i=0; i<src_len; i++){
-        printf_enc("Decrypted Characters(in Enclave):%x", new_char[i]);
-    }
-    
-    printf_enc("Status_decrypt: %x", status);
-    if(status != SGX_SUCCESS) {
-        return status;
-    }
-    curInput.value += (std::string) (char*) &new_char;
-
-    return status;
-}
-
 //START OF KEYBOARD STUFF
 sgx_status_t get_keyboard_chars(uint8_t *p_src){
     
@@ -860,8 +839,14 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     else{
         curInput.value += p_char[0];
     }
-    printf_enc("Char obtained: %x", p_char[0] );    
-    printf_enc("new value: %s", curInput.value);
+    printf_enc("KEYBOARD: Input NAME = %s", curInput.name);
+    printf_enc("KEYBOARD: Input Field X = %d", curInput.x);
+    printf_enc("KEYBOARD: Input Field Y = %d", curInput.y);
+    printf_enc("KEYBOARD: Input Field Width = %d", curInput.width);
+    printf_enc("KEYBOARD: Input Field Height= %d", curInput.height);
+    printf_enc("KEYBOARD: Char obtained: %x", p_char[0] );    
+    printf_enc("KEYBOARD: new value for input = %s", curInput.value);
+    forms[curForm.name].inputs[curInput.name] = curInput;
     return status;
 }
 

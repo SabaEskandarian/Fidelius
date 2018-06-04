@@ -95,7 +95,7 @@ uint8_t* attestation_msg_samples[] =
 
 using namespace std;
 
-KeyboardDriver KB("keyboard_test", "empty");
+KeyboardDriver KB("keyboard_test", "");
 ofstream myfile;
 
 uint8_t convert(char *target){
@@ -278,8 +278,9 @@ void addForm(vector<string> argv) {
     string origin = argv[3];
     uint16_t formX = (uint16_t)(stod(argv[4], NULL)*SCALE_X);
     uint16_t formY = (uint16_t)(stod(argv[5], NULL)*SCALE_Y);
-    add_form(enclave_id, &ret, name.c_str(), name.length(), 
-        origin.c_str(), origin.length(), formX, formY); //ECALL
+    add_form(enclave_id, &ret, name.c_str(), name.length()+1, 
+        origin.c_str(), origin.length()+1, formX, formY); //ECALL
+    if (ret != SGX_SUCCESS) myfile << "!!!add_form ecall FAILED" << endl;
 	
 	myfile << "ADD FORM with name: " << name  << " signature: " << signature << endl;
 	for (int i = 6; i < argv.size(); i+=5) {
@@ -289,9 +290,11 @@ void addForm(vector<string> argv) {
         uint16_t x = (uint16_t)(stod(argv[i+3], NULL)*SCALE_X);
         uint16_t y = (uint16_t)(stod(argv[i+4], NULL)*SCALE_Y);
         if (DEBUG_MODE) myfile << "\tADD INPUT: " << inputName << " (" << x << "," << y << ") " << endl;
-        add_input(enclave_id, &ret, name.c_str(), name.length(), inputName.c_str(), inputName.length(),
-                    (uint8_t*)(signature.c_str()), signature.length(), 
+        add_input(enclave_id, &ret, name.c_str(), name.length()+1, inputName.c_str(), inputName.length()+1,
+                    (uint8_t*)(signature.c_str()), signature.length()+1, 
                     (i+5 < argv.size()) ? 0 : 1, x, y, h, w); //ECALL
+        if (ret != SGX_SUCCESS) myfile << "!!!add_input ecall FAILED" << endl;
+
 	}
 }
 
@@ -419,8 +422,8 @@ void listenForKeyboard() {
     }*/
     uint8_t keyboardBuff[58] = {0};
     while(true) {
-        //unique_lock<mutex> lk(keyboard_mutex);
-        //cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
+        unique_lock<mutex> lk(keyboard_mutex);
+        cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
         KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
         myfile << "got encrypted input" << endl;
         uint8_t bytebuff[29];
@@ -429,17 +432,20 @@ void listenForKeyboard() {
         myfile << "KEYB BUFFER: " << bytebuff << endl;
         myfile << keyboardBuff << endl;
         get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
-        /*uint8_t outBuff[524288];
+        uint8_t outBuff[524288];
         uint32_t out_len;
+        myfile << "MAKE DISPLAY ECALL" << endl;
+        myfile << "DISPLAY ECALL FOR FORM " << focusInput.first.c_str() << endl;
         create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
-        if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
+        myfile << "DISPLAY ECALL RETURNED" << endl;
+        /*if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
             myfile << "FAILED BT SEND" << endl;
         }*/
     }
-    /*uint32_t out_len;
+    uint32_t out_len;
     uint8_t outBuff[524288];
     create_remove_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str());
-    connection.channel_close();*/
+    //connection.channel_close();
 }
 
 
