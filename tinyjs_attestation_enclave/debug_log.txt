@@ -4,30 +4,75 @@ INIT enclave with origin: dummyOrigin
 
 
 CREATED THREAD
-ADD FORM with name: loginform signature: [1037978111,-1940328779,-645802496,-2084336751,-193022574,-373951983,349875021,-840096393,-2079147395,2135129014,-1431547139,-219971741,-254221439,1224978552,-1461523006,464923676]
-	ADD INPUT: username (130,0) 
-	ADD INPUT: password (124,31) 
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000@
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
 
+Char obtained: 61
+new value: a
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000@
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
 
-FOCUS on form: loginform input: undefined at: 130.306, 87.6562 width: 300.444 height: 25.5
+Char obtained: 61
+new value: aa
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000@
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
 
+Char obtained: 61
+new value: aaa
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000@
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
 
-BLUR on form: loginform input: undefined at: 73.2969, 58.4375
+Char obtained: 61
+new value: aaaa
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000@
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
 
+Char obtained: 61
+new value: aaaaa
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000@
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
 
-FOCUS on form: loginform input: undefined at: 124.056, 119.156 width: 300.444 height: 25.5
+Char obtained: 61
+new value: aaaaaa
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000@
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
 
+Char obtained: 61
+new value: aaaaaaa
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000@
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
 
-BLUR on form: loginform input: undefined at: 69.7812, 79.4375
-
-
-FOCUS on form: loginform input: undefined at: 130.306, 87.6562 width: 300.444 height: 25.5
-
-
-BLUR on form: loginform input: undefined at: 73.2969, 58.4375
-
-
-FOCUS on form: loginform input: undefined at: 124.056, 119.156 width: 300.444 height: 25.5
-
-
-SHUTTING DOWN EM
+Char obtained: 61
+new value: aaaaaaaa

@@ -95,7 +95,7 @@ uint8_t* attestation_msg_samples[] =
 
 using namespace std;
 
-KeyboardDriver KB("/dev/ttyACM0", "/dev/ttyACM1");
+KeyboardDriver KB("keyboard_test", "empty");
 ofstream myfile;
 
 uint8_t convert(char *target){
