@@ -27,7 +27,7 @@ var currentFocus = null;
  */
 function getInputName(input) {
 	if (input.nodeName == "INPUT") {
-		if (input.hasAttribute("secureName")) return input.getAttribute("secureName");
+		if (input.hasAttribute("name")) return input.getAttribute("name");
 	};
 }
 
@@ -56,11 +56,13 @@ function onFocus() {
     	elemRect = currentFocus.getBoundingClientRect(),
     	yCoord = elemRect.top - bodyRect.top;
     	xCoord = elemRect.left - bodyRect.left;
-		var focusInfo = {formName, inputName, xCoord, yCoord};
+    	var height = currentFocus.clientHeight;
+    	var width = currentFocus.clientWidth;
+		//var focusInfo = {formName, inputName, xCoord, yCoord};
 		//formPort.postMessage("The following element has just been focused on:\n" + JSON.stringify(focusInfo));
 		//console.log("The following element has just been focused on:");
 		//console.log(focusInfo);
-		var m = "" + ON_FOCUS + '\n' + formName + '\n' + inputName + '\n' + xCoord + '\n' + yCoord + '\n';
+		var m = "" + ON_FOCUS + '\n' + formName + '\n' + inputName + '\n' + xCoord + '\n' + yCoord + '\n' + height + '\n' + width + '\n';
 		formPort.postMessage(m);
 
 	}
@@ -133,7 +135,6 @@ function makeTextFile(text) {
 
 function extractJS(filename) {
 	var xhttp = createRequest("GET", filename);
-
 	xhttp.onload = function() {
 		var responseText = xhttp.responseText;
 		scriptString += responseText;
@@ -151,6 +152,7 @@ function parseScriptTags() {
 	for (var i = 0; i < scriptArray.length; i++) {
 		if (scriptArray[i].hasAttribute("sign")) {
 			signature = scriptArray[i].getAttribute("sign");
+
 			scriptString += (ADD_SCRIPT + "\n");
 			scriptString += signature;
 			scriptString += "\n#EOF#\n";
@@ -168,6 +170,22 @@ function parseScriptTags() {
 	}
 }
 
+function getInputCoords(form, input) {
+    elemRect = input.getBoundingClientRect();
+    formRect = form.getBoundingClientRect();
+
+	yCoord = elemRect.top - formRect.top;
+	xCoord = elemRect.left - formRect.left;
+
+	var height = input.clientHeight;
+	var width = input.clientWidth;
+
+	formString += width + "\n";
+	formString += height + "\n";
+	formString += xCoord + "\n";
+	formString += yCoord + "\n";
+}
+
 function getInputs(form) {
   for (var i = 0; i < form.elements.length; i++) {
     if (form.elements[i].nodeName == "INPUT") {
@@ -178,8 +196,9 @@ function getInputs(form) {
 
     input = form.elements[i];
 
-    formString += input.getAttribute("type") + "\n";
-		formString += input.name + "\n";
+    formString += input.name + "\n";
+    getInputCoords(form, input);
+
   }
 }
 
@@ -190,10 +209,19 @@ function parseFormTags() {
 		formString += ADD_FORM.toString() + "\n";
 		formString += form.name + "\n";
 		formString += form.getAttribute("sign") + "\n";
+		formString += location.origin + "\n";
+		formRect = form.getBoundingClientRect();
+
+		formX = window.screenX + formRect.left;
+		formY = window.screenY + formRect.top + window.outerHeight - window.innerHeight;
+
+		formString += formX + "\n";
+		formString += formY + "\n";
 		getInputs(form);
 		formPort.postMessage(formString);
 		formString = "";
 		listen(form);
+
 		if (!useEnclave) checkSecureForm(form);
 	}
 	if (!useEnclave) alert("Insecure form.");
@@ -237,12 +265,12 @@ function initializeMessaging() {
 function main() {
 	initializeMessaging();
 	parseFormTags();
-	parseScriptTags();
+	//parseScriptTags();
 	if (!useEnclave) return;
 
 	var file = makeTextFile(scriptString + formString);
 
-	JSport.postMessage(scriptString);
+	if (scriptString != "") JSport.postMessage(scriptString);
 
 	//Redirects to file
 	if (window.confirm("Click \"OK\" to view to parsed HTML info.")) {
