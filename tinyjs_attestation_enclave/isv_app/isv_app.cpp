@@ -415,11 +415,11 @@ bool parseMessage(string message) {
 void listenForKeyboard() {
     myfile << "CREATED THREAD" << endl;
     myfile.flush();
-    /*BluetoothChannel connection;
+    BluetoothChannel connection;
     if (connection.channel_open() < 0) {
         myfile << "FAILED BT CONNECT" << endl;
         return;
-    }*/
+    }
     uint8_t keyboardBuff[58] = {0};
     while(true) {
         unique_lock<mutex> lk(keyboard_mutex);
@@ -438,9 +438,9 @@ void listenForKeyboard() {
         myfile << "DISPLAY ECALL FOR FORM " << focusInput.first.c_str() << endl;
         create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
         myfile << "DISPLAY ECALL RETURNED" << endl;
-        /*if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
+        if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
             myfile << "FAILED BT SEND" << endl;
-        }*/
+        }
     }
     uint32_t out_len;
     uint8_t outBuff[524288];

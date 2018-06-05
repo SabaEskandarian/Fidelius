@@ -4,7 +4,7 @@ INIT enclave with origin: dummyOrigin
 
 
 CREATED THREAD
-ADD FORM with name: payment signature: [1809097350,1777194306,1742752629,-645203997,-558688674,2021606571,1815383322,1827531593,-225704920,1186758865,-736537659,-1704270317,-51224507,-1943755064,585868051,-709802092]
+ADD FORM with name: payment signature: [-862642865,-2081032883,398150795,827775625,-1165605020,2145348068,-1392373033,105602218,-1415982672,-1704388022,-1262321083,-1550293203,172880241,1500706652,-1105487405,-110940914]
 	ADD INPUT: holder (247,0) 
 ENCLAVE: ADD_INPUT: adding input named: holder to form payment
 input: 
@@ -28,12 +28,12 @@ signature did not match
  
 
 
-FOCUS on form: payment input: holder at: 247.611, 87.6562 width: 300.444 height: 25.5
+FOCUS on form: payment input: cvv at: 135.361, 179.156 width: 300.444 height: 25.5
 INPUT: FORM NAME = payment
-INPUT: Input name = holder which should be the same as: holder
+INPUT: Input name = cvv which should be the same as: cvv
 INPUT: Input Field Value = 
-INPUT: Input Field X = 247
-INPUT: Input Field Y = 0
+INPUT: Input Field X = 135
+INPUT: Input Field Y = 91
 INPUT: Input Field Width = 300
 INPUT: Input Field Height= 25
 
@@ -45,9 +45,9 @@ Executing gcm_decrypt function from enclave...
 Decrypted Characters(in Enclave):61
 Status_decrypt: 0
 
-KEYBOARD: Input NAME = holder
-KEYBOARD: Input Field X = 247
-KEYBOARD: Input Field Y = 0
+KEYBOARD: Input NAME = cvv
+KEYBOARD: Input Field X = 135
+KEYBOARD: Input Field Y = 91
 KEYBOARD: Input Field Width = 300
 KEYBOARD: Input Field Height= 25
 KEYBOARD: Char obtained: 61
@@ -71,19 +71,19 @@ DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
 
 DISPLAY: Input Field name = cvv and should be the same as cvv
-DISPLAY: Input Field Value = 
+DISPLAY: Input Field Value = a
 DISPLAY: Input Field X = 135
 DISPLAY: Input Field Y = 91
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-
+a
 DISPLAY: Input Field name = holder and should be the same as holder
-DISPLAY: Input Field Value = a
+DISPLAY: Input Field Value = 
 DISPLAY: Input Field X = 247
 DISPLAY: Input Field Y = 0
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-a
+
 DISPLAY ECALL RETURNED
 got encrypted input
 KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
@@ -92,9 +92,9 @@ Executing gcm_decrypt function from enclave...
 Decrypted Characters(in Enclave):61
 Status_decrypt: 0
 
-KEYBOARD: Input NAME = holder
-KEYBOARD: Input Field X = 247
-KEYBOARD: Input Field Y = 0
+KEYBOARD: Input NAME = cvv
+KEYBOARD: Input Field X = 135
+KEYBOARD: Input Field Y = 91
 KEYBOARD: Input Field Width = 300
 KEYBOARD: Input Field Height= 25
 KEYBOARD: Char obtained: 61
@@ -118,19 +118,19 @@ DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
 
 DISPLAY: Input Field name = cvv and should be the same as cvv
-DISPLAY: Input Field Value = 
+DISPLAY: Input Field Value = aa
 DISPLAY: Input Field X = 135
 DISPLAY: Input Field Y = 91
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-
+aa
 DISPLAY: Input Field name = holder and should be the same as holder
-DISPLAY: Input Field Value = aa
+DISPLAY: Input Field Value = 
 DISPLAY: Input Field X = 247
 DISPLAY: Input Field Y = 0
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-aa
+
 DISPLAY ECALL RETURNED
 got encrypted input
 KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
@@ -139,9 +139,9 @@ Executing gcm_decrypt function from enclave...
 Decrypted Characters(in Enclave):61
 Status_decrypt: 0
 
-KEYBOARD: Input NAME = holder
-KEYBOARD: Input Field X = 247
-KEYBOARD: Input Field Y = 0
+KEYBOARD: Input NAME = cvv
+KEYBOARD: Input Field X = 135
+KEYBOARD: Input Field Y = 91
 KEYBOARD: Input Field Width = 300
 KEYBOARD: Input Field Height= 25
 KEYBOARD: Char obtained: 61
@@ -165,19 +165,19 @@ DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
 
 DISPLAY: Input Field name = cvv and should be the same as cvv
-DISPLAY: Input Field Value = 
+DISPLAY: Input Field Value = aaa
 DISPLAY: Input Field X = 135
 DISPLAY: Input Field Y = 91
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-
+aaa
 DISPLAY: Input Field name = holder and should be the same as holder
-DISPLAY: Input Field Value = aaa
+DISPLAY: Input Field Value = 
 DISPLAY: Input Field X = 247
 DISPLAY: Input Field Y = 0
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-aaa
+
 DISPLAY ECALL RETURNED
 got encrypted input
 KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
@@ -186,9 +186,9 @@ Executing gcm_decrypt function from enclave...
 Decrypted Characters(in Enclave):61
 Status_decrypt: 0
 
-KEYBOARD: Input NAME = holder
-KEYBOARD: Input Field X = 247
-KEYBOARD: Input Field Y = 0
+KEYBOARD: Input NAME = cvv
+KEYBOARD: Input Field X = 135
+KEYBOARD: Input Field Y = 91
 KEYBOARD: Input Field Width = 300
 KEYBOARD: Input Field Height= 25
 KEYBOARD: Char obtained: 61
@@ -212,19 +212,19 @@ DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
 
 DISPLAY: Input Field name = cvv and should be the same as cvv
-DISPLAY: Input Field Value = 
+DISPLAY: Input Field Value = aaaa
 DISPLAY: Input Field X = 135
 DISPLAY: Input Field Y = 91
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-
+aaaa
 DISPLAY: Input Field name = holder and should be the same as holder
-DISPLAY: Input Field Value = aaaa
+DISPLAY: Input Field Value = 
 DISPLAY: Input Field X = 247
 DISPLAY: Input Field Y = 0
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-aaaa
+
 DISPLAY ECALL RETURNED
 got encrypted input
 KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
@@ -233,9 +233,9 @@ Executing gcm_decrypt function from enclave...
 Decrypted Characters(in Enclave):61
 Status_decrypt: 0
 
-KEYBOARD: Input NAME = holder
-KEYBOARD: Input Field X = 247
-KEYBOARD: Input Field Y = 0
+KEYBOARD: Input NAME = cvv
+KEYBOARD: Input Field X = 135
+KEYBOARD: Input Field Y = 91
 KEYBOARD: Input Field Width = 300
 KEYBOARD: Input Field Height= 25
 KEYBOARD: Char obtained: 61
@@ -259,19 +259,19 @@ DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
 
 DISPLAY: Input Field name = cvv and should be the same as cvv
-DISPLAY: Input Field Value = 
+DISPLAY: Input Field Value = aaaaa
 DISPLAY: Input Field X = 135
 DISPLAY: Input Field Y = 91
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-
+aaaaa
 DISPLAY: Input Field name = holder and should be the same as holder
-DISPLAY: Input Field Value = aaaaa
+DISPLAY: Input Field Value = 
 DISPLAY: Input Field X = 247
 DISPLAY: Input Field Y = 0
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-aaaaa
+
 DISPLAY ECALL RETURNED
 got encrypted input
 KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
@@ -280,9 +280,9 @@ Executing gcm_decrypt function from enclave...
 Decrypted Characters(in Enclave):61
 Status_decrypt: 0
 
-KEYBOARD: Input NAME = holder
-KEYBOARD: Input Field X = 247
-KEYBOARD: Input Field Y = 0
+KEYBOARD: Input NAME = cvv
+KEYBOARD: Input Field X = 135
+KEYBOARD: Input Field Y = 91
 KEYBOARD: Input Field Width = 300
 KEYBOARD: Input Field Height= 25
 KEYBOARD: Char obtained: 61
@@ -306,19 +306,19 @@ DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
 
 DISPLAY: Input Field name = cvv and should be the same as cvv
-DISPLAY: Input Field Value = 
+DISPLAY: Input Field Value = aaaaaa
 DISPLAY: Input Field X = 135
 DISPLAY: Input Field Y = 91
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-
+aaaaaa
 DISPLAY: Input Field name = holder and should be the same as holder
-DISPLAY: Input Field Value = aaaaaa
+DISPLAY: Input Field Value = 
 DISPLAY: Input Field X = 247
 DISPLAY: Input Field Y = 0
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-aaaaaa
+
 DISPLAY ECALL RETURNED
 got encrypted input
 KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
@@ -327,9 +327,9 @@ Executing gcm_decrypt function from enclave...
 Decrypted Characters(in Enclave):61
 Status_decrypt: 0
 
-KEYBOARD: Input NAME = holder
-KEYBOARD: Input Field X = 247
-KEYBOARD: Input Field Y = 0
+KEYBOARD: Input NAME = cvv
+KEYBOARD: Input Field X = 135
+KEYBOARD: Input Field Y = 91
 KEYBOARD: Input Field Width = 300
 KEYBOARD: Input Field Height= 25
 KEYBOARD: Char obtained: 61
@@ -353,19 +353,19 @@ DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
 
 DISPLAY: Input Field name = cvv and should be the same as cvv
-DISPLAY: Input Field Value = 
+DISPLAY: Input Field Value = aaaaaaa
 DISPLAY: Input Field X = 135
 DISPLAY: Input Field Y = 91
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-
+aaaaaaa
 DISPLAY: Input Field name = holder and should be the same as holder
-DISPLAY: Input Field Value = aaaaaaa
+DISPLAY: Input Field Value = 
 DISPLAY: Input Field X = 247
 DISPLAY: Input Field Y = 0
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-aaaaaaa
+
 DISPLAY ECALL RETURNED
 got encrypted input
 KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
@@ -374,9 +374,9 @@ Executing gcm_decrypt function from enclave...
 Decrypted Characters(in Enclave):61
 Status_decrypt: 0
 
-KEYBOARD: Input NAME = holder
-KEYBOARD: Input Field X = 247
-KEYBOARD: Input Field Y = 0
+KEYBOARD: Input NAME = cvv
+KEYBOARD: Input Field X = 135
+KEYBOARD: Input Field Y = 91
 KEYBOARD: Input Field Width = 300
 KEYBOARD: Input Field Height= 25
 KEYBOARD: Char obtained: 61
@@ -400,47 +400,17 @@ DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
 
 DISPLAY: Input Field name = cvv and should be the same as cvv
-DISPLAY: Input Field Value = 
+DISPLAY: Input Field Value = aaaaaaaa
 DISPLAY: Input Field X = 135
 DISPLAY: Input Field Y = 91
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-
+aaaaaaaa
 DISPLAY: Input Field name = holder and should be the same as holder
-DISPLAY: Input Field Value = aaaaaaaa
+DISPLAY: Input Field Value = 
 DISPLAY: Input Field X = 247
 DISPLAY: Input Field Y = 0
 DISPLAY: Input Field Width = 300
 DISPLAY: Input Field Height= 25
-aaaaaaaa
+
 DISPLAY ECALL RETURNED
-BLUR on form: payment input: holder at: 139.281, 58.4375
-
-
-FOCUS on form: payment input: cc at: 248.833, 119.156 width: 300.444 height: 25.5
-INPUT: FORM NAME = payment
-INPUT: Input name = cc which should be the same as: cc
-INPUT: Input Field Value = 
-INPUT: Input Field X = 248
-INPUT: Input Field Y = 31
-INPUT: Input Field Width = 300
-INPUT: Input Field Height= 25
-
-
-BLUR on form: payment input: cc at: 139.969, 79.4375
-
-
-FOCUS on form: payment input: holder at: 247.611, 87.6562 width: 300.444 height: 25.5
-INPUT: FORM NAME = payment
-INPUT: Input name = holder which should be the same as: holder
-INPUT: Input Field Value = aaaaaaaa
-INPUT: Input Field X = 247
-INPUT: Input Field Y = 0
-INPUT: Input Field Width = 300
-INPUT: Input Field Height= 25
-
-
-BLUR on form: payment input: holder at: 139.281, 58.4375
-
-
-SHUTTING DOWN EM
