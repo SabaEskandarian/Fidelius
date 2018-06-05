@@ -29,6 +29,7 @@ class  KeyboardDriver
   //  int _baud;
   
   // Modifiers
+  void setAttributes(int);
   int openPorts();
   void closePorts();
   
