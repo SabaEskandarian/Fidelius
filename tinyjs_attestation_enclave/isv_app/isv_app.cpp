@@ -84,7 +84,7 @@
 
 #define ENCLAVE_PATH "isv_enclave.signed.so"
 
-double SCALE_X = 1920.0/1080;
+double SCALE_X = 1920.0/1280;
 double SCALE_Y = 1080.0/720;
 
 uint8_t* msg1_samples[] = { msg1_sample1, msg1_sample2 };
@@ -228,7 +228,7 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 this ivar is for debugging only, it will close the debug
 log after the EM recieves/parses the specified number of commands.
 */
-int eventsUntilCloseLog = 9;
+int eventsUntilCloseLog = 20;
 
 bool runningManager = true;
 pair<string, string> focusInput;
@@ -424,19 +424,8 @@ void listenForKeyboard() {
     while(true) {
         unique_lock<mutex> lk(keyboard_mutex);
         cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
-        myfile << "KEYB: trying to get encrypted input" << endl;
-        int enc_bytes = KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
-        if (enc_bytes <= 0) {
-            myfile << "TIMEOUT on encrypted input" << endl;
-            continue;
-        }
-        myfile << "got encrypted input" << endl;
-        uint8_t bytebuff[29];
-        hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
-        sgx_status_t ret;
-        myfile << "KEYB BUFFER: " << bytebuff << endl;
-        myfile << keyboardBuff << endl;
-        get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
+
+        
         uint8_t outBuff[524288];
         uint32_t out_len;
         myfile << "MAKE DISPLAY ECALL" << endl;
@@ -445,6 +434,21 @@ void listenForKeyboard() {
         myfile << "DISPLAY ECALL RETURNED" << endl;
         if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
             myfile << "FAILED BT SEND" << endl;
+        }
+        myfile << "KEYB: trying to get encrypted input" << endl;
+        int enc_bytes = KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
+        if (enc_bytes <= 0) {
+            myfile << "TIMEOUT on encrypted input" << endl;
+        }
+        else
+        {
+            myfile << "got encrypted input" << endl;
+            uint8_t bytebuff[29];
+            hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
+            sgx_status_t ret;
+            myfile << "KEYB BUFFER: " << bytebuff << endl;
+            myfile << keyboardBuff << endl;
+            get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
         }
     }
     uint32_t out_len;

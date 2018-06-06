@@ -143,10 +143,9 @@ static uint32_t add_bitmap_data(uint8_t *output, uint16_t x, uint16_t y,
   std::strncpy(text, value.c_str(), value.length()+1);
 
   /* Draw character string */
-  Bitmap *b = bm_create(width, height);
-  bm_set_color(b, bm_atoi("blue"));
-  bm_set_alpha(b, 255);
-  bm_puts(b, 0, 0, text);
+  Bitmap *b = bm_make_text(width, height, bm_atoi("black"), bm_atoi("white"),
+                           255, text);
+
 
   /* Copy meta data and rgba data to buffer */
   x = htons(x);

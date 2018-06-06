@@ -19,12 +19,14 @@ FIXME: Not all functions that should respect IGNORE_ALPHA does so.
 #  define IGNORE_ALPHA 1
 #endif
 
+/* AGBR DEFINED FOR SGX PROJECT */
+
 /* Experimental ABGR color mode.
  * Normally colors are stored as 0xARGB, but Emscripten uses an
  * 0xABGR format on the canvas, so use -DABGR=1 in your compiler
  * flags if you need to use this mode. */
 #ifndef ABGR
-#  define ABGR 0
+#  define ABGR 1
 #endif
 
 #if BM_LAST_ERROR
@@ -92,6 +94,33 @@ See __STDC_LIB_EXT1__
 /* N=0 -> B, N=1 -> G, N=2 -> R, N=3 -> A */
 #define BM_GETN(B,N,X,Y) (B->data[((Y) * BM_ROW_SIZE(B) + (X) * BM_BPP) + (N)])
 
+Bitmap *bm_make_text (int w, int h, unsigned int col, unsigned int bg_col,
+                      int bg_alpha, const char * text) {
+    const int font_width = 6;
+    const int font_height = 8; // Height of xbmf font
+
+    /* Determines the space between top and bottom of text box */
+    int y_margin = font_height / 2;
+    int def_height = font_height + y_margin * 2;
+    int def_width = (int) (def_height * w/h);
+    Bitmap *b = bm_create (def_width, def_height);
+    /* bg color */
+    bm_set_color (b, bg_col);
+    bm_set_alpha (b, bg_alpha);
+    bm_fillrect(b, 0,0, def_width, def_height);
+    /* pen color */
+    bm_set_color(b, col);
+    bm_set_alpha(b, 255);
+    int t_width = bm_text_width (b, text);
+    int t_height = bm_text_height (b, text);
+    int start = t_width > def_width? def_width - t_width - font_width/2 : 0;
+    bm_puts(b, start, (def_height - t_height)/2, text);
+    Bitmap *ret = bm_resample(b, w, h);
+    /* Resample creates a new bitmap */
+    bm_free (b);
+    return ret;
+}
+
 Bitmap *bm_create(int w, int h) {
     Bitmap *b = (Bitmap *) malloc(sizeof *b);
     if(!b) {
@@ -129,7 +158,6 @@ Bitmap *bm_create(int w, int h) {
 Bitmap *bm_copy(Bitmap *b) {
     Bitmap *out = bm_create(b->w, b->h);
     memcpy(out->data, b->data, BM_BLOB_SIZE(b));
-
     out->color = b->color;
     out->font = b->font;
 
