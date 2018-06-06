@@ -1030,8 +1030,8 @@ if(argc > 2)
     size_t sig_size = sizeof(sig); 
     sgx_status_t re;
     add_form(enclave_id, &re, "loginform", 10, "a", 2, 0, 0);
-    add_input(enclave_id, &re, "loginform", 10, "username", 9, NULL, 0, 0);
-    add_input(enclave_id, &re, "loginform", 10, "password", 9, (uint8_t*)&sig, sig_size, 1); 
+    add_input(enclave_id, &re, "loginform", 10, "username", 9, NULL, 0, 0, 0, 0, 0, 0);
+    add_input(enclave_id, &re, "loginform", 10, "password", 9, (uint8_t*)&sig, sig_size, 1, 0, 0, 0, 0); 
     printf("added input %d\n", re);
 
     std::string oneLine = "";

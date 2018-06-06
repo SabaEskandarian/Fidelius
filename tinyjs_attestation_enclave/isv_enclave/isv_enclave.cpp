@@ -712,16 +712,16 @@ sgx_status_t add_input(const char * name, size_t len1, const char* input_i, size
         } else {
             printf_enc("adding input\n");
             input new_input;
-            inputs.insert(std::pair<std::string, input>(eInput, new_input));
             std::string form = parse_form(f, false);
-            f.inputs = inputs;
             form = parse_form(f, false);
             new_input.name = eInput;
             new_input.x = x;
             new_input.y = y;
             new_input.width = width;
             new_input.height = height;
-            f.inputs[eInput] = new_input;
+            //f.inputs[eInput] = new_input;
+            f.inputs.insert(std::pair<std::string, input>(eInput, new_input));
+
             //inputs.insert(std::pair<std::string, input>(eInput, new_input));
                         // all inputs added, then only parse form and validate form
             if(val == 1) {
