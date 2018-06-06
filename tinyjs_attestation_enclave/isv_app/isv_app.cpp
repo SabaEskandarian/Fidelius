@@ -95,7 +95,7 @@ uint8_t* attestation_msg_samples[] =
 
 using namespace std;
 
-KeyboardDriver KB("keyboard_test", "");
+KeyboardDriver KB("/dev/ttyACM0", "/dev/ttyACM1");
 ofstream myfile;
 
 uint8_t convert(char *target){
@@ -415,15 +415,16 @@ bool parseMessage(string message) {
 void listenForKeyboard() {
     myfile << "CREATED THREAD" << endl;
     myfile.flush();
-    BluetoothChannel connection;
-    if (connection.channel_open() < 0) {
+    //BluetoothChannel connection;
+    /*if (connection.channel_open() < 0) {
         myfile << "FAILED BT CONNECT" << endl;
         return;
-    }
+    }*/
     uint8_t keyboardBuff[58] = {0};
     while(true) {
         unique_lock<mutex> lk(keyboard_mutex);
         cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
+        myfile << "KEYB: trying to get encrypted input" << endl;
         KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
         myfile << "got encrypted input" << endl;
         uint8_t bytebuff[29];
@@ -432,7 +433,7 @@ void listenForKeyboard() {
         myfile << "KEYB BUFFER: " << bytebuff << endl;
         myfile << keyboardBuff << endl;
         get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
-        uint8_t outBuff[524288];
+        /*uint8_t outBuff[524288];
         uint32_t out_len;
         myfile << "MAKE DISPLAY ECALL" << endl;
         myfile << "DISPLAY ECALL FOR FORM " << focusInput.first.c_str() << endl;
@@ -440,12 +441,12 @@ void listenForKeyboard() {
         myfile << "DISPLAY ECALL RETURNED" << endl;
         if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
             myfile << "FAILED BT SEND" << endl;
-        }
+        }*/
     }
-    uint32_t out_len;
+    /*uint32_t out_len;
     uint8_t outBuff[524288];
     create_remove_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str());
-    //connection.channel_close();
+    //connection.channel_close();*/
 }
 
 
