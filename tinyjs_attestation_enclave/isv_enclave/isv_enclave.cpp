@@ -533,26 +533,30 @@ std::string parse_form_secure(form f, uint8_t* p_gcm_mac) {
     {
         std::string key = it->first;
         std::string value = it->second.value;
+        printf_enc("key = %s, val = %s\n", key, value);
 
         uint32_t len_val = (uint32_t) value.length();
-        uint8_t encr_val[len_val] = {0};
-        uint8_t aes_gcm_iv[12] = {0};
+        printf_enc("len_val %d\n", len_val);
+        printf_enc("here\n");
+        if(len_val > 0){
+            uint8_t encr_val[len_val] = {0};
+            uint8_t aes_gcm_iv[12] = {0};
+            sgx_status_t ret = sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_tag_t *) (&g_secret),
+                    (const uint8_t*) &value[0],
+                    len_val,  
+                    &encr_val[0],
+                    &aes_gcm_iv[0],
+                    12,
+                    NULL,
+                    0,
+                    (sgx_aes_gcm_128bit_tag_t *) (p_gcm_mac));
+            printf_enc("encryped\n");
+            if(ret != SGX_SUCCESS){
+                return "-1";
+            }
 
-        sgx_status_t ret = sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_tag_t *) (&g_secret),
-                (const uint8_t*) &value[0],
-                len_val,  
-                &encr_val[0],
-                &aes_gcm_iv[0],
-                12,
-                NULL,
-                0,
-                (sgx_aes_gcm_128bit_tag_t *) (p_gcm_mac));
-        if(ret != SGX_SUCCESS){
-            return "-1";
+            value = std::string((char *) &encr_val[0]);
         }
-
-        value = std::string((char *) &encr_val[0]);
-
         std::string pair = "\"" + key + "\":\"" + value + "\",";
         parsed = parsed + pair;
     }
@@ -747,6 +751,7 @@ sgx_status_t add_input(const char * name, size_t len1, const char* input_i, size
             new_input.y = y;
             new_input.width = width;
             new_input.height = height;
+            new_input.value = "";
             //f.inputs[eInput] = new_input;
             f.inputs.insert(std::pair<std::string, input>(eInput, new_input));
 
@@ -822,7 +827,7 @@ uint32_t form_len(const char* formName) {
     return SGX_ERROR_INVALID_PARAMETER;
   }
   form f = it->second;
-  uint32_t len = (uint32_t) parse_form(f, true).length();
+  uint32_t len = (uint32_t) parse_form(f, true).length() + 1;
   return len;
 }
 
@@ -838,13 +843,58 @@ sgx_status_t submit_form(const char* formName,
   if(!f.validated) {
     return SGX_ERROR_INVALID_PARAMETER;
   }
+  printf_enc("ready\n");
 
-  std::string str_form = parse_form_secure(f, p_gcm_mac); 
+  //std::string str_form = parse_form_secure(f, p_gcm_mac); 
+  std::string str_form = parse_form(f, true);
+  uint8_t aes_gcm_iv[12] = {0};
+  sgx_status_t ret = sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_tag_t *) (&g_secret),
+        (const uint8_t*) &str_form[0],
+        encr_size,  
+        dest,
+        &aes_gcm_iv[0],
+        12,
+        NULL,
+        0,
+        (sgx_aes_gcm_128bit_tag_t *) (p_gcm_mac));
+
+  //printf_enc("p form %s\n", str_form.c_str());
   if(str_form == "-1") {
     return SGX_ERROR_INVALID_PARAMETER;
   }
-  memcpy(dest, str_form.c_str(), str_form.length()+1);
+  // printf_enc("encr_size %d\n", encr_size);
+  // printf_enc("str size %d\n", str_form.length());
+  // memcpy(dest, str_form, str_form.length()+1);
+  // printf_enc("got here\n");
   return SGX_SUCCESS;
+}
+
+sgx_status_t test_decryption(uint8_t* form, uint32_t form_size, uint8_t* mac) {
+    printf_enc("decrypting\n");
+    printf_enc("form size %d\n", form_size);
+    uint8_t output[form_size] = {0};
+    uint8_t aes_gcm_iv[12] = {0};
+    for(int i = 0; i < 16; i++) {
+        printf_enc("%d", mac[i]);
+    }
+    printf_enc("\n");
+    sgx_status_t ret =  sgx_rijndael128GCM_decrypt((const sgx_aes_gcm_128bit_tag_t *) &g_secret,
+        (const uint8_t*)  &form,
+        form_size,
+        &output[0],
+        &aes_gcm_iv[0],
+        12,
+        NULL,
+        0,
+        (sgx_aes_gcm_128bit_tag_t *) mac);
+    printf_enc("ret %d\n", (int)ret);
+
+    printf_enc("finished\n");
+    for(int i = 0; i < form_size; i++) {
+        printf_enc("%c", (char)output[i]);
+    }
+    printf_enc("\n");
+
 }
 
 int t = 5;
@@ -881,6 +931,65 @@ void js_update_form(CScriptVar *v, void *userdata) {
     printf_enc("set %s to %s\n", it2->first, val);
 }
 
+void js_make_http_request(CScriptVar *v, void* userdata) {
+    std::string method = v->getParameter("method")->getString();
+    std::string url = v->getParameter("url")->getString();
+    std::string headers = v->getParameter("headers")->getString();
+    std::string post_data = v->getParameter("postData")->getString();
+    std::string request_data = method + url + headers + post_data;
+    if(url != origin) {
+        printf_enc("Error: invalid origin %s", url);
+        return;
+    }
+
+    uint32_t len_val = (uint32_t) request_data.length();
+    uint8_t encr_val[len_val] = {0};
+    uint8_t aes_gcm_iv[12] = {0};
+    uint8_t p_gcm_mac[16] = {0};
+    sgx_status_t ret = sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_tag_t *) (&g_secret),
+            (const uint8_t*) &request_data[0],
+            len_val,  
+            &encr_val[0],
+            &aes_gcm_iv[0],
+            12,
+            NULL,
+            0,
+            (sgx_aes_gcm_128bit_tag_t *) (p_gcm_mac));
+    if(ret != SGX_SUCCESS){
+        printf_enc("Error: encryption failed");
+        return;    
+    }
+    request_data = std::string((char *) &encr_val[0]);
+
+    int ret_code = 0;
+    enc_make_http_request(&ret, method.c_str(), url.c_str(), headers.c_str(), request_data.c_str(), &ret_code);
+    if(ret != SGX_SUCCESS) {
+        printf_enc("Error: request failed");
+        return; 
+    }
+    CScriptVar sv = CScriptVar(ret_code);
+    v->setReturnVar(&sv);
+}
+
+bool response_ready = false;
+std::string response;
+
+void get_http_response(char* http_response, size_t response_len) {
+    response = copyString(http_response, response_len);
+    response_ready = true;
+}
+
+void js_get_http_response(CScriptVar *v, void* userdata) {
+    while(true) {
+        if(response_ready == true) {
+            CScriptVar r = CScriptVar(response);
+            v->setReturnVar(&r);
+            response_ready = false;
+        }
+    }
+}
+
+
 void js_dump(CScriptVar *v, void *userdata) {
     CTinyJS *js = (CTinyJS*)userdata;
     js->root->trace(">  ");
@@ -911,8 +1020,8 @@ sgx_status_t run_js(char* code, size_t len){
     js->addNative("function print(text)", &js_print, 0);
     js->addNative("function dump()", &js_dump, js);
     js->addNative("function update_form(formName, inputName, val)", &js_update_form, js);
-
-    //js->addNative("function print_t()", &js_print_t, &t);
+    js->addNative("function js_make_http_request(method, url, headers, postData)", &js_make_http_request, js);
+    js->addNative("function js_get_http_response()", &js_get_http_response, js);
     try {
         //js->execute("print_t()");
         //t = 6;
