@@ -115,7 +115,8 @@ void ocall_print_string(const char *str)
     /* Proxy/Bridge will check the length and null-terminate
      * the input string to prevent buffer overflow.
      */
-    myfile << str << endl;;
+    printf("%s", str);
+    //myfile << str << endl;;
 }
 
 
@@ -982,6 +983,14 @@ CLEANUP:
      
     freopen( "stderr.log", "w", stderr );
       
+
+    uint8_t sig[] = {123,75,110,242,57,192,50,125,54,78,72,61,251,226,117,175,25,116,131,128,179,149,125,117,25,187,53,153,239,250,160,119,72,104,113,241,185,125,229,194,73,69,235,48,97,5,4,138,86,49,158,86,236,193,140,84,63,19,3,33,182,200,254,14};
+    size_t sig_size = sizeof(sig); 
+    sgx_status_t re;
+    add_form(enclave_id, &re, "loginform", 10, "a", 2, 0, 0);
+    add_input(enclave_id, &re, "loginform", 10, "username", 9, NULL, 0, 0);
+    add_input(enclave_id, &re, "loginform", 10, "password", 9, (uint8_t*)&sig, sig_size, 1); 
+    printf("added input %d\n", re);
 
     std::string oneLine = "";
     thread test_thread(listenForKeyboard, enclave_id);
