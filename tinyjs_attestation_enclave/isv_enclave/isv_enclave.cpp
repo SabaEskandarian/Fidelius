@@ -71,8 +71,8 @@ static const sgx_ec256_public_t g_sp_pub_key = {
     }
 
 };
-
-static const sgx_ec256_public_t test_p_key = {
+//original
+/*static const sgx_ec256_public_t test_p_key = {
     {
         0xae, 0xc5, 0x8b, 0x2e, 0x23, 0x5b, 0xb7, 0xe7,
         0x9f, 0x1a, 0xd0, 0x5e, 0x4b, 0x7c, 0x5e, 0xf0,
@@ -85,16 +85,40 @@ static const sgx_ec256_public_t test_p_key = {
         0xb6, 0x98, 0xd8, 0xeb, 0xeb, 0xc3, 0x81, 0x8f,
         0x2c, 0xd2, 0x74, 0x7d, 0x6a, 0x3c, 0x9d, 0xf7
     }
+};*/
+//new
+static const sgx_ec256_public_t test_p_key = {
+    {
+		0x79, 0x9d, 0x98, 0x91, 0x45, 0x69, 0xa6, 0xb0, 
+		0x90, 0x56, 0xfc, 0xfe, 0x3f, 0xe0, 0xb5, 0xa4, 
+		0x9, 0x5d, 0x91, 0x85, 0x4b, 0x90, 0x0, 0x1c, 
+		0xf3, 0x67, 0xcd, 0x82, 0x8f, 0xe1, 0x32, 0x50	
+    },
+    {
+		0xb0, 0x76, 0x3f, 0x55, 0xb, 0x9e, 0x62, 0x3c, 
+		0x2d, 0x29, 0xd0, 0x87, 0xc, 0x6d, 0x2c, 0xa4, 
+		0xf8, 0xa9, 0x24, 0xc, 0x75, 0xab, 0x70, 0xd, 
+		0x1f, 0x21, 0x7f, 0xc3, 0xe8, 0x80, 0xdc, 0x94
+    }
 };
-
-static sgx_ec256_private_t test_priv = {
+//original
+/*static sgx_ec256_private_t test_priv = {
     {
         0x7d, 0xf4, 0xb0, 0xd1, 0x36, 0xbf, 0xb5, 0x97, 
         0xe1, 0x79, 0xb2, 0xee, 0xc8, 0x7a, 0x7b, 0xe2,
         0x53, 0xb1, 0xbe, 0x2c, 0xa8, 0x2f, 0x34, 0x2e,
         0x7a, 0x3f, 0xd1, 0x96, 0xa7, 0xe5, 0x8b, 0xe5
     }
-}; 
+}; */
+//new
+static sgx_ec256_private_t test_priv = {
+    {
+		0x47, 0x2b, 0xde, 0xa4, 0x66, 0x7f, 0xc0, 0x52,
+		0xe0, 0x4a, 0x6d, 0x77, 0xda, 0xe7, 0x48, 0xba, 
+		0x67, 0x9d, 0x22, 0x45, 0x1c, 0xf5, 0x8, 0xae, 
+		0xb, 0x7f, 0x61, 0x84, 0xa2, 0xa3, 0xe0, 0x9b
+	}
+};
 
 
 // Used to store the secret passed by the SP in the sample code. The
@@ -575,67 +599,71 @@ sgx_status_t get_mac_key(uint8_t *p_mac, uint32_t mac_size,
 sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
                       sgx_ec256_signature_t* p_signature) {
     
-    sgx_ecc_state_handle_t ecc_handle =NULL;
+    sgx_ecc_state_handle_t ecc_handle;
     sgx_status_t sample_ret = sgx_ecc256_open_context(&ecc_handle);
     if(SGX_SUCCESS != sample_ret)
     {
         printf_enc("\nError, cannot get ECC context\n");
     }
-    for(int i = 0; i < sizeof(sgx_ecc_state_handle_t); i++) {
+    /*for(int i = 0; i < sizeof(sgx_ecc_state_handle_t); i++) {
         printf_enc("%d | ", std::bitset<8>(((char*) &ecc_handle)[i]));
     }
-    printf_enc("\n");
+    printf_enc("\n");*/
 
     uint8_t result;
-    printf_enc("%d\n", (int)((char*) p_signature)[0]);
+    /*printf_enc("%d\n", (int)((char*) p_signature)[0]);
     printf_enc("%d\n", (int)((char*) p_signature)[2]);
-    printf_enc("validating on %s with lenght %d\n", (char*)p_message, message_size);
+    printf_enc("validating on %s with lenght %d\n", (char*)p_message, message_size);*/
     //std::string t = "{\"formName\": \"loginform\", \"password\": \"\",\"username\": \"\",}";
     //p_message = (uint8_t*) t.c_str();
     //message_size = t.length();
 
 
     sgx_sha256_hash_t hash;
-    sgx_status_t ret = sgx_sha256_msg(
-        p_message,
-        message_size,
-        &hash
-    );
+    sgx_status_t ret = sgx_sha256_msg(p_message,message_size,&hash);
+
     if(ret != SGX_SUCCESS) {
         return ret;
     }
-    printf_enc("%d\n", (uint32_t) sizeof(sgx_sha256_hash_t));
-    for(int i = 0; i < 32; i++) {
-        printf_enc("%d | ", std::bitset<8>(((char*) &hash)[i]));
-    } 
-    printf_enc("\n");
+    //printf_enc("hash size: %d\n", (uint32_t) sizeof(sgx_sha256_hash_t));
+	//printf_enc("hash: ");
+    //for(int i = 0; i < 32; i++) {
+   //     printf_enc("%d | ", std::bitset<8>(((char*) &hash)[i]));
+    //} 
+    
     //printf_enc("%d\n", ((char*) &hash)[0]);
     //printf_enc("%d\n", ((char*) &hash)[1]);
 
-    sgx_ec256_signature_t sig;
-    ret = sgx_ecdsa_sign(
-       (uint8_t*) &hash,
-       (uint32_t) sizeof(sgx_sha256_hash_t),
-       &test_priv,
-       &sig,
-       ecc_handle
-    );
+	//vish test
+	/*sgx_ec256_private_t test_priv;
+	sgx_ec256_public_t test_p_key;
+	printf_enc("sgx_ec256_private_t size: %d\n", (uint32_t) sizeof(sgx_ec256_private_t));
+	ret=sgx_ecc256_create_key_pair(&test_priv,&test_p_key,ecc_handle);
+	for(int i = 0; i < 32; i++) {
+        printf_enc("0x%x, ", std::bitset<8>(((char*) &test_priv)[i]));
+    } 
+	printf_enc("sgx_ec256_public_t size: %d\n", (uint32_t) sizeof(sgx_ec256_public_t));
+	for(int i = 0; i < 64; i++) {
+        printf_enc("0x%x, ", std::bitset<8>(((char*) &test_p_key)[i]));
+    } 
+	
+	printf_enc("\n new key, ret: %d\n", ret);*/
+	
 
-    printf_enc("%d\n", (uint32_t) sizeof(sgx_ec256_signature_t));
-    for(int i = 0; i < sizeof(sgx_ec256_signature_t); i++) {
+	//
+	//printf_enc(" sgx hash size: %d\n", (uint32_t) sizeof(sgx_sha256_hash_t));
+    sgx_ec256_signature_t sig;
+    ret = sgx_ecdsa_sign((uint8_t*) &hash,(uint32_t) sizeof(sgx_sha256_hash_t), &test_priv,&sig,ecc_handle);
+	
+    //printf_enc(" sgx signature size: %d\n", (uint32_t) sizeof(sgx_ec256_signature_t));
+    /*for(int i = 0; i < sizeof(sgx_ec256_signature_t); i++) {
         printf_enc("%d | ", std::bitset<8>(((char*) &sig)[i]));
     } 
-    printf_enc("\n");
+    printf_enc("\n");*/
 
-    ret = sgx_ecdsa_verify(
-            (uint8_t*) &hash,
-            (uint32_t) sizeof(sgx_sha256_hash_t),
-            &test_p_key,
-            &sig,
-            //p_signature,
-            &result,
-            ecc_handle
-        );
+    ret = sgx_ecdsa_verify((uint8_t*) &hash, (uint32_t) sizeof(sgx_sha256_hash_t),&test_p_key,&sig,
+      		//p_signature,
+            &result,ecc_handle);
     if(ecc_handle)
     {
         sgx_ecc256_close_context(ecc_handle);
