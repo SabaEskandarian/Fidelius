@@ -44,13 +44,15 @@ extern std::string origin;
  * out_len: total length of the message
  * form_id: form_id string
  */
-void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, char *form_id)
+void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form_id)
 {
+  ocall_print_string("DISPLAY: BEGIN\n");
   uint8_t *p_aad = output;
   uint16_t seq = htons(seq_no);
 
   *out_len = (uint32_t) ADD_OVERLAY_HDR_LEN + BMP_TAG_LEN + BMP_IV_LEN;
 
+  ocall_print_string("DISPLAY: SETTING HEADER\n");
   /* Copy header data */
   memcpy(output, &seq, sizeof(uint16_t));
   seq_no++;
@@ -67,24 +69,38 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, char *form_id)
 
   /* Start of encrypted data */
   uint8_t *p_enc = output;
-
+  ocall_print_string("DISPLAY: READING FORMS\n");
   /* Add bitmap data */
   uint32_t bitmap_len = 0;
+
   std::map<std::string,form>::iterator form_it;
   form_it = forms.find((std::string)(form_id));
+  if (form_it == forms.end())
+  {
+    ocall_print_string("DISPLAY: FORM NOT FOUND");
+  }
   form form = form_it->second;
-
+  printf_enc("DISPLAY: FORM ORGIN = %s", origin.c_str());
   /* Add the origin bitmap */
   bitmap_len = add_bitmap_data(output, form.x, form.y, 100,
                             10, origin);
   *out_len += bitmap_len;
   output += bitmap_len;
 
+  ocall_print_string("DISPLAY: ADDING FIELD BITMAPS\n");
   /* Add the bitmaps of the input fields */
   for (std::map<std::string, input>::iterator it = form.inputs.begin();
        it != form.inputs.end(); it++)
   {
     input field = it->second;
+    printf_enc("DISPLAY: Input Field name = %s and should be the same as %s", it->first, field.name);
+    printf_enc("DISPLAY: Input Field Value = %s", field.value);
+    printf_enc("DISPLAY: Input Field X = %d", field.x);
+    printf_enc("DISPLAY: Input Field Y = %d", field.y);
+    printf_enc("DISPLAY: Input Field Width = %d", field.width);
+    printf_enc("DISPLAY: Input Field Height= %d", field.height);
+
+    ocall_print_string(field.value.c_str());
     bitmap_len = add_bitmap_data(output, field.x, field.y, field.width,
                                  field.height, field.value);
     output += bitmap_len;
@@ -161,7 +177,7 @@ static uint32_t add_bitmap_data(uint8_t *output, uint16_t x, uint16_t y,
  * out_len: total length of the message
  * form_id: form_id string
  */
-void create_remove_overlay_msg(uint8_t *output, uint32_t *out_len, char *form_id)
+void create_remove_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form_id)
 {
   uint8_t *p_aad = output;
   uint8_t op = OP_ADD_OVERLAY;

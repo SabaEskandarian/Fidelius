@@ -48,6 +48,7 @@ extern "C" {
 
 typedef struct input
 {
+	std::string name;
     std::string value;
     uint16_t x;
     uint16_t y;
@@ -57,6 +58,7 @@ typedef struct input
 
 typedef struct form
 {
+	std::string name;
     std::map<std::string, input> inputs;
     uint16_t x;
     uint16_t y;

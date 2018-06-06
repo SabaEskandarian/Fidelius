@@ -43,6 +43,8 @@
 #include <condition_variable>
 #include <thread>
 #include "keyboard_driver.h"
+#include "btchannel.h"
+
 
 ///////////////////////////////////
 #include <stdarg.h>
@@ -82,19 +84,21 @@
 
 #define ENCLAVE_PATH "isv_enclave.signed.so"
 
+double SCALE_X = 1920.0/1080;
+double SCALE_Y = 1080.0/720;
 
 uint8_t* msg1_samples[] = { msg1_sample1, msg1_sample2 };
 uint8_t* msg2_samples[] = { msg2_sample1, msg2_sample2 };
 uint8_t* msg3_samples[MSG3_BODY_SIZE] = { msg3_sample1, msg3_sample2 };
 uint8_t* attestation_msg_samples[] =
-    { attestation_msg_sample1, attestation_msg_sample2};
+{ attestation_msg_sample1, attestation_msg_sample2};
 
-    using namespace std;
+using namespace std;
 
-KeyboardDriver KB("./keyboard_test", "empty");
+KeyboardDriver KB("keyboard_test", "");
 ofstream myfile;
 
-/*uint8_t convert(char *target){
+uint8_t convert(char *target){
     uint8_t number = (int)strtol(target, NULL, 16);
     return number;
 }
@@ -108,7 +112,7 @@ void hexStrtoBytes(char *char_stream, int stream_len, uint8_t *byte_array){
         array[1] = *(char_stream+i+1);
         byte_array[i/2] = convert(&array[0]);
     }
-}*/
+}
 
 void ocall_print_string(const char *str)
 {
@@ -155,7 +159,7 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 
     fprintf(file, "RESPONSE TYPE:   0x%x\n", response->type);
     fprintf(file, "RESPONSE STATUS: 0x%x 0x%x\n", response->status[0],
-            response->status[1]);
+        response->status[1]);
     fprintf(file, "RESPONSE BODY SIZE: %u\n", response->size);
 
     if(response->type == TYPE_RA_MSG2)
@@ -174,37 +178,37 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 
         fprintf(file, "MSG2 sign_gb_ga - ");
         PRINT_BYTE_ARRAY(file, &(p_msg2_body->sign_gb_ga),
-                         sizeof(p_msg2_body->sign_gb_ga));
+           sizeof(p_msg2_body->sign_gb_ga));
 
         fprintf(file, "MSG2 mac - ");
         PRINT_BYTE_ARRAY(file, &(p_msg2_body->mac), sizeof(p_msg2_body->mac));
 
         fprintf(file, "MSG2 sig_rl - ");
         PRINT_BYTE_ARRAY(file, &(p_msg2_body->sig_rl),
-                         p_msg2_body->sig_rl_size);
+           p_msg2_body->sig_rl_size);
     }
     else if(response->type == TYPE_RA_ATT_RESULT)
     {
         sample_ra_att_result_msg_t *p_att_result =
-            (sample_ra_att_result_msg_t *)(response->body);
+        (sample_ra_att_result_msg_t *)(response->body);
         fprintf(file, "ATTESTATION RESULT MSG platform_info_blob - ");
         PRINT_BYTE_ARRAY(file, &(p_att_result->platform_info_blob),
-                         sizeof(p_att_result->platform_info_blob));
+           sizeof(p_att_result->platform_info_blob));
 
         fprintf(file, "ATTESTATION RESULT MSG mac - ");
         PRINT_BYTE_ARRAY(file, &(p_att_result->mac), sizeof(p_att_result->mac));
 
         fprintf(file, "ATTESTATION RESULT MSG secret.payload_tag - %u bytes\n",
-                p_att_result->secret.payload_size);
+            p_att_result->secret.payload_size);
 
         fprintf(file, "ATTESTATION RESULT MSG secret.payload - ");
         PRINT_BYTE_ARRAY(file, p_att_result->secret.payload,
-                p_att_result->secret.payload_size);
+            p_att_result->secret.payload_size);
     }
     else
     {
         fprintf(file, "\nERROR in printing out the response. "
-                       "Response of type not supported %d\n", response->type);
+         "Response of type not supported %d\n", response->type);
     }
 }
 
@@ -216,65 +220,82 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 #define INITIALIZE_ENCLAVE 2
 #define ADD_FORM 3
 #define ADD_SCRIPT 4
-#define ADD_INPUT 5
 #define TERMINATE_ENCLAVE 6
 #define SUBMIT_HTTP_REQ 7
 #define SHUTDOWN_EM 8
-
 #define N_COMMANDS 9
 
 /*
 this ivar is for debugging only, it will close the debug
 log after the EM recieves/parses the specified number of commands.
 */
-int eventsUntilCloseLog = 5;
+int eventsUntilCloseLog = 9;
 
 bool runningManager = true;
 pair<string, string> focusInput;
 condition_variable_any cv;
 mutex keyboard_mutex;
+sgx_enclave_id_t enclave_id;
 
 
 void handleOnBlur(string formName, string inputName, double mouseX, double mouseY) {
     //TO DO: make ecall for blur event
     if (DEBUG_MODE) myfile << "BLUR on form: " << formName << " input: " << inputName << " at: " << mouseX << ", " << mouseY << endl;
-     focusInput = make_pair("","");
-     uint8_t b = 0;
-     KB.changeMode(&b, 1);
-     cv.notify_all();
+    focusInput = make_pair("","");
+    uint8_t b = 0;
+    KB.changeMode(&b, 1);
+    sgx_status_t ret;
+    onBlur(enclave_id, &ret); //ECALL
+    cv.notify_all();
 }
 
 
-void handleOnFocus(string formName, string inputName, double mouseX, double mouseY, double height, double width) {
+void handleOnFocus(string formName, string inputName, double x, double y, double h, double w) {
 	//TO DO: make ecall for focus event
+    x *= SCALE_X;
+    y *= SCALE_Y;
+    h *= SCALE_Y;
+    w *= SCALE_X;
+
     if (DEBUG_MODE) myfile << "FOCUS on form: " << formName << " input: " << inputName << " at: "
-        << mouseX << ", " << mouseY 
-        << " width: " << width 
-        << " height: " << height << endl;
+        << x << ", " << y 
+    << " width: " << w 
+    << " height: " << h << endl;
 
     focusInput = make_pair(formName,inputName);
     uint8_t b = 1;
     KB.changeMode(&b, 1);
+    sgx_status_t ret;
+    onFocus(enclave_id, &ret, formName.c_str(), inputName.c_str(), 
+        (uint16_t)x, (uint16_t)y, (uint16_t)w, (uint16_t)h); //ECALL
     cv.notify_all();
-}
-
-void addInput(string name, string input_i, string type) {
-	//TO DO: make ecall for adding input
-	if (DEBUG_MODE) myfile << "\tADD INPUT: " << input_i << " of type: " << type << endl;
 }
 
 void addForm(vector<string> argv) {
 	//TO DO: make ecall for adding a form
+    sgx_status_t ret;
 	string name = argv[1];
 	string signature = argv[2];
-	//string type = argv[3];
+    string origin = argv[3];
+    uint16_t formX = (uint16_t)(stod(argv[4], NULL)*SCALE_X);
+    uint16_t formY = (uint16_t)(stod(argv[5], NULL)*SCALE_Y);
+    add_form(enclave_id, &ret, name.c_str(), name.length()+1, 
+        origin.c_str(), origin.length()+1, formX, formY); //ECALL
+    if (ret != SGX_SUCCESS) myfile << "!!!add_form ecall FAILED" << endl;
+	
+	myfile << "ADD FORM with name: " << name  << " signature: " << signature << endl;
+	for (int i = 6; i < argv.size(); i+=5) {
+        string inputName = argv[i];
+        uint16_t w = (uint16_t)(stod(argv[i+1], NULL)*SCALE_X);
+        uint16_t h = (uint16_t)(stod(argv[i+2], NULL)*SCALE_Y);
+        uint16_t x = (uint16_t)(stod(argv[i+3], NULL)*SCALE_X);
+        uint16_t y = (uint16_t)(stod(argv[i+4], NULL)*SCALE_Y);
+        if (DEBUG_MODE) myfile << "\tADD INPUT: " << inputName << " (" << x << "," << y << ") " << endl;
+        add_input(enclave_id, &ret, name.c_str(), name.length()+1, inputName.c_str(), inputName.length()+1,
+                    (uint8_t*)(signature.c_str()), signature.length()+1, 
+                    (i+5 < argv.size()) ? 0 : 1, x, y, h, w); //ECALL
+        if (ret != SGX_SUCCESS) myfile << "!!!add_input ecall FAILED" << endl;
 
-	if (DEBUG_MODE) {
-		myfile << "ADD FORM with name: " << name  << " signature: " << signature << endl;
-		for (int i = 4; i < argv.size(); i+=2) {
-			//myfile << "input " << i << ": " + argv[i] << endl;
-			addInput(name, argv[i+1], argv[i]);
-		}
 	}
 }
 
@@ -284,11 +305,11 @@ void addScript(string signature, string name) {
   string gen_sign="Kg7eVNk&3L";//sgx_funct(name);
   if(gen_sign==signature){
     if (DEBUG_MODE) myfile << "ADD SCRIPT with signature: " << signature << "\ncode: " << name << endl;
-  }
-  else{
+}
+else{
     if (DEBUG_MODE) myfile << "signature did not match\n ";
 
-  }
+}
 
 }
 
@@ -299,10 +320,10 @@ void initializeEnclave(string origin) {
 	if (DEBUG_MODE) myfile << "INIT enclave with origin: " << origin << endl;
 }
 
-void terminateEnclave(string origin,sgx_enclave_id_t enclave_id) {
+void terminateEnclave(string origin) {
 	//TO DO: write code to terminate an enclave
-  //sgx_destroy_enclave(enclave_id);
-	if (DEBUG_MODE) myfile << "TERMINATE enclave with origin: " << origin << endl;
+    sgx_destroy_enclave(enclave_id);
+	if (DEBUG_MODE) myfile << "TERMINATE enclave with id: " << enclave_id << endl;
 }
 
 void submitHttpReq(string request) {
@@ -328,7 +349,7 @@ void parseScript(string message) {
 	}
 }
 
-bool parseMessage(string message,sgx_enclave_id_t enclave_id) {
+bool parseMessage(string message) {
 	eventsUntilCloseLog--;
 
 	vector<string> argv;
@@ -346,75 +367,96 @@ bool parseMessage(string message,sgx_enclave_id_t enclave_id) {
 
 	string s = message;
 	while ((pos = s.find(delimiter)) != string::npos) {
-    	token = s.substr(0, pos);
-    	argv.push_back(token);
-    	s.erase(0, pos + delimiter.length());
+       token = s.substr(0, pos);
+       argv.push_back(token);
+       s.erase(0, pos + delimiter.length());
 
-	}
+   }
 	//myfile << "EM found: " << argv.size() << " arguments delimited by \\n" << endl;
 
-	if (command < 0 || command >= N_COMMANDS) {
-		myfile << "no command: " << command << " found" << endl;
-		return true;
-	}
+   if (command < 0 || command >= N_COMMANDS) {
+      myfile << "no command: " << command << " found" << endl;
+      return true;
+  }
 
 
-	switch(command) {
-		case ON_BLUR:
-            handleOnBlur(argv[1], argv[2], stod(argv[3], NULL), stod(argv[4], NULL));
-			break;
-		case ON_FOCUS:
-            handleOnFocus(argv[1], argv[2], stod(argv[3], NULL), stod(argv[4], NULL), stod(argv[5], NULL), stod(argv[6], NULL));
-			break;
-		case INITIALIZE_ENCLAVE:
-            initializeEnclave(argv[1]);
-			break;
-		case ADD_FORM:
-			addForm(argv);
-			break;
-		case ADD_SCRIPT:
-			addScript(argv[1], argv[2]);
-			break;
-		case TERMINATE_ENCLAVE:
-			terminateEnclave(argv[1], enclave_id);
-			break;
-		case SUBMIT_HTTP_REQ:
-			submitHttpReq(argv[1]);
-			break;
-		case SHUTDOWN_EM:
-			myfile.close();
-			return false;
-	}
-	myfile << "\n\n";
-	if (eventsUntilCloseLog == 0) {
-		return false;
-	}
-	return true;
+  switch(command) {
+      case ON_BLUR:
+      handleOnBlur(argv[1], argv[2], stod(argv[3], NULL), stod(argv[4], NULL));
+      break;
+      case ON_FOCUS:
+      handleOnFocus(argv[1], argv[2], stod(argv[3], NULL), stod(argv[4], NULL), stod(argv[5], NULL), stod(argv[6], NULL));
+      break;
+      case INITIALIZE_ENCLAVE:
+      initializeEnclave(argv[1]);
+      break;
+      case ADD_FORM:
+      addForm(argv);
+      break;
+      case ADD_SCRIPT:
+      addScript(argv[1], argv[2]);
+      break;
+      case TERMINATE_ENCLAVE:
+      terminateEnclave(argv[1]);
+      break;
+      case SUBMIT_HTTP_REQ:
+      submitHttpReq(argv[1]);
+      break;
+      case SHUTDOWN_EM:
+      myfile.close();
+      return false;
+  }
+  myfile << "\n\n";
+  if (eventsUntilCloseLog == 0) {
+      return false;
+  }
+  return true;
 }
 
-void listenForKeyboard(sgx_enclave_id_t enclave_id) {
+void listenForKeyboard() {
+    myfile << "CREATED THREAD" << endl;
+    myfile.flush();
+    BluetoothChannel connection;
+    if (connection.channel_open() < 0) {
+        myfile << "FAILED BT CONNECT" << endl;
+        return;
+    }
     uint8_t keyboardBuff[58] = {0};
     while(true) {
         unique_lock<mutex> lk(keyboard_mutex);
         cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
         KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
+        myfile << "got encrypted input" << endl;
         uint8_t bytebuff[29];
-        //hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
+        hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
         sgx_status_t ret;
-        myfile << "KEYB BUFFER: " /*<< bytebuff*/ << endl;
-        //get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
-        //make display ECALL
+        myfile << "KEYB BUFFER: " << bytebuff << endl;
+        myfile << keyboardBuff << endl;
+        get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
+        uint8_t outBuff[524288];
+        uint32_t out_len;
+        myfile << "MAKE DISPLAY ECALL" << endl;
+        myfile << "DISPLAY ECALL FOR FORM " << focusInput.first.c_str() << endl;
+        create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
+        myfile << "DISPLAY ECALL RETURNED" << endl;
+        if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
+            myfile << "FAILED BT SEND" << endl;
+        }
     }
+    uint32_t out_len;
+    uint8_t outBuff[524288];
+    create_remove_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str());
+    //connection.channel_close();
 }
 
 
 void sendMessage(string message) {
     unsigned int len = message.length();
-     cout  << char((len>>0) & 0xFF)
-           << char((len>>8) & 0xFF)
-           << char((len>>16) & 0xFF)
-           << char((len>>24) & 0xFF)
-           << message << endl;
+    cout  << char((len>>0) & 0xFF)
+    << char((len>>8) & 0xFF)
+    << char((len>>16) & 0xFF)
+    << char((len>>24) & 0xFF)
+    << message << endl;
     // Collect the length of the message
     /*unsigned int len = message.length();
     // Now we can output our message
@@ -440,13 +482,13 @@ int main(int argc, char* argv[])
     ra_samp_response_header_t *p_msg2_full = NULL;
     sgx_ra_msg3_t *p_msg3 = NULL;
     ra_samp_response_header_t* p_att_result_msg_full = NULL;
-    sgx_enclave_id_t enclave_id = 0;
+    enclave_id = 0;
     int enclave_lost_retry_time = 1;
     int busy_retry_time = 4;
     sgx_ra_context_t context = INT_MAX;
     sgx_status_t status = SGX_SUCCESS;
     ra_samp_request_header_t* p_msg3_full = NULL;
-	
+
     int32_t verify_index =1;// -1;
     int32_t verification_samples = sizeof(msg1_samples)/sizeof(msg1_samples[0]);
 
@@ -454,147 +496,147 @@ int main(int argc, char* argv[])
     //fprintf(stdout, "\nhelp1 \n");
 
 #define VERIFICATION_INDEX_IS_VALID() (verify_index > 0 && \
-                                       verify_index <= verification_samples)
+    verify_index <= verification_samples)
 #define GET_VERIFICATION_ARRAY_INDEX() (verify_index-1)
-	fprintf(OUTPUT,"argc: %d \n",argc);
-	for(int i=0;i<argc;i++){
-		fprintf(OUTPUT,"argv[%d]: %s \n",i,argv[i]);
-	}
-    if(argc > 2)
-    {
+fprintf(OUTPUT,"argc: %d \n",argc);
+for(int i=0;i<argc;i++){
+  fprintf(OUTPUT,"argv[%d]: %s \n",i,argv[i]);
+}
+if(argc > 2)
+{
 
-        verify_index = atoi(argv[1]);
-	fprintf(OUTPUT, "verify index: %d\n",verify_index);
-        if( VERIFICATION_INDEX_IS_VALID())
-        {
-            fprintf(OUTPUT, "\nVerifying precomputed attestation messages "
-                            "using precomputed values# %d\n", verify_index);
-        }
-        else
-        {
-            fprintf(OUTPUT, "\nValid invocations are:\n");
-            fprintf(OUTPUT, "\n\tisv_app\n");
-            fprintf(OUTPUT, "\n\tisv_app <verification index>\n");
-            fprintf(OUTPUT, "\nValid indices are [1 - %d]\n",
-                    verification_samples);
-            fprintf(OUTPUT, "\nUsing a verification index uses precomputed "
-                    "messages to assist debugging the remote attestation "
-                    "service provider.\n");
-            return -1;
-        }
+    verify_index = atoi(argv[1]);
+    fprintf(OUTPUT, "verify index: %d\n",verify_index);
+    if( VERIFICATION_INDEX_IS_VALID())
+    {
+        fprintf(OUTPUT, "\nVerifying precomputed attestation messages "
+            "using precomputed values# %d\n", verify_index);
     }
+    else
+    {
+        fprintf(OUTPUT, "\nValid invocations are:\n");
+        fprintf(OUTPUT, "\n\tisv_app\n");
+        fprintf(OUTPUT, "\n\tisv_app <verification index>\n");
+        fprintf(OUTPUT, "\nValid indices are [1 - %d]\n",
+            verification_samples);
+        fprintf(OUTPUT, "\nUsing a verification index uses precomputed "
+            "messages to assist debugging the remote attestation "
+            "service provider.\n");
+        return -1;
+    }
+}
 
     // Preparation for remote attestation by configuring extended epid group id.
+{
+    uint32_t extended_epid_group_id = 0;
+    ret = sgx_get_extended_epid_group_id(&extended_epid_group_id);
+    if (SGX_SUCCESS != ret)
     {
-        uint32_t extended_epid_group_id = 0;
-        ret = sgx_get_extended_epid_group_id(&extended_epid_group_id);
-        if (SGX_SUCCESS != ret)
-        {
-            ret = -1;
-            fprintf(OUTPUT, "\nError, call sgx_get_extended_epid_group_id fail [%s].",
-                __FUNCTION__);
-            return ret;
-        }
-        fprintf(OUTPUT, "\nCall sgx_get_extended_epid_group_id success.");
+        ret = -1;
+        fprintf(OUTPUT, "\nError, call sgx_get_extended_epid_group_id fail [%s].",
+            __FUNCTION__);
+        return ret;
+    }
+    fprintf(OUTPUT, "\nCall sgx_get_extended_epid_group_id success.");
 
-        p_msg0_full = (ra_samp_request_header_t*)
-            malloc(sizeof(ra_samp_request_header_t)
-            +sizeof(uint32_t));
-        if (NULL == p_msg0_full)
-        {
-            ret = -1;
-            goto CLEANUP;
-        }
-        p_msg0_full->type = TYPE_RA_MSG0;
-        p_msg0_full->size = sizeof(uint32_t);
+    p_msg0_full = (ra_samp_request_header_t*)
+    malloc(sizeof(ra_samp_request_header_t)
+        +sizeof(uint32_t));
+    if (NULL == p_msg0_full)
+    {
+        ret = -1;
+        goto CLEANUP;
+    }
+    p_msg0_full->type = TYPE_RA_MSG0;
+    p_msg0_full->size = sizeof(uint32_t);
 
-        *(uint32_t*)((uint8_t*)p_msg0_full + sizeof(ra_samp_request_header_t)) = extended_epid_group_id;
-        {
+    *(uint32_t*)((uint8_t*)p_msg0_full + sizeof(ra_samp_request_header_t)) = extended_epid_group_id;
+    {
 
-            fprintf(OUTPUT, "\nMSG0 body generated -\n");
+        fprintf(OUTPUT, "\nMSG0 body generated -\n");
 
-            PRINT_BYTE_ARRAY(OUTPUT, p_msg0_full->body, p_msg0_full->size);
+        PRINT_BYTE_ARRAY(OUTPUT, p_msg0_full->body, p_msg0_full->size);
 
-        }
+    }
         // The ISV application sends msg0 to the SP.
         // The ISV decides whether to support this extended epid group id.
-        fprintf(OUTPUT, "\nSending msg0 to remote attestation service provider.\n");
+    fprintf(OUTPUT, "\nSending msg0 to remote attestation service provider.\n");
 
-        ret = ra_network_send_receive("http://SampleServiceProvider.intel.com/",
-            p_msg0_full,
-            &p_msg0_resp_full);
-        if (ret != 0)
-        {
-            fprintf(OUTPUT, "\nError, ra_network_send_receive for msg0 failed "
-                "[%s].", __FUNCTION__);
-            goto CLEANUP;
-        }
-        fprintf(OUTPUT, "\nSent MSG0 to remote attestation service.\n");
+    ret = ra_network_send_receive("http://SampleServiceProvider.intel.com/",
+        p_msg0_full,
+        &p_msg0_resp_full);
+    if (ret != 0)
+    {
+        fprintf(OUTPUT, "\nError, ra_network_send_receive for msg0 failed "
+            "[%s].", __FUNCTION__);
+        goto CLEANUP;
     }
+    fprintf(OUTPUT, "\nSent MSG0 to remote attestation service.\n");
+}
     // Remote attestation will be initiated the ISV server challenges the ISV
     // app or if the ISV app detects it doesn't have the credentials
     // (shared secret) from a previous attestation required for secure
     // communication with the server.
-    {
+{
         // ISV application creates the ISV enclave.
-        int launch_token_update = 0;
-        sgx_launch_token_t launch_token = {0};
-        memset(&launch_token, 0, sizeof(sgx_launch_token_t));
-        do
-        {
-            ret = sgx_create_enclave(_T(ENCLAVE_PATH),
-                                     SGX_DEBUG_FLAG,
-                                     &launch_token,
-                                     &launch_token_update,
-                                     &enclave_id, NULL);
-            if(SGX_SUCCESS != ret)
-            {
-                ret = -1;
-                fprintf(OUTPUT, "\nError, call sgx_create_enclave fail [%s].",
-                        __FUNCTION__);
-                goto CLEANUP;
-            }
-            fprintf(OUTPUT, "\nCall sgx_create_enclave success.");
-
-            ret = enclave_init_ra(enclave_id,
-                                  &status,
-                                  false,
-                                  &context);
-        //Ideally, this check would be around the full attestation flow.
-        } while (SGX_ERROR_ENCLAVE_LOST == ret && enclave_lost_retry_time--);
-
-        if(SGX_SUCCESS != ret || status)
+    int launch_token_update = 0;
+    sgx_launch_token_t launch_token = {0};
+    memset(&launch_token, 0, sizeof(sgx_launch_token_t));
+    do
+    {
+        ret = sgx_create_enclave(_T(ENCLAVE_PATH),
+           SGX_DEBUG_FLAG,
+           &launch_token,
+           &launch_token_update,
+           &enclave_id, NULL);
+        if(SGX_SUCCESS != ret)
         {
             ret = -1;
-            fprintf(OUTPUT, "\nError, call enclave_init_ra fail [%s].",
-                    __FUNCTION__);
+            fprintf(OUTPUT, "\nError, call sgx_create_enclave fail [%s].",
+                __FUNCTION__);
             goto CLEANUP;
         }
-        fprintf(OUTPUT, "\nCall enclave_init_ra success.");
+        fprintf(OUTPUT, "\nCall sgx_create_enclave success.");
+
+        ret = enclave_init_ra(enclave_id,
+          &status,
+          false,
+          &context);
+        //Ideally, this check would be around the full attestation flow.
+    } while (SGX_ERROR_ENCLAVE_LOST == ret && enclave_lost_retry_time--);
+
+    if(SGX_SUCCESS != ret || status)
+    {
+        ret = -1;
+        fprintf(OUTPUT, "\nError, call enclave_init_ra fail [%s].",
+            __FUNCTION__);
+        goto CLEANUP;
+    }
+    fprintf(OUTPUT, "\nCall enclave_init_ra success.");
 
         // isv application call uke sgx_ra_get_msg1
-        p_msg1_full = (ra_samp_request_header_t*)
-                      malloc(sizeof(ra_samp_request_header_t)
-                             + sizeof(sgx_ra_msg1_t));
-        if(NULL == p_msg1_full)
-        {
-            ret = -1;
-            goto CLEANUP;
-        }
-        p_msg1_full->type = TYPE_RA_MSG1;
-        p_msg1_full->size = sizeof(sgx_ra_msg1_t);
-        do
-        {
-            ret = sgx_ra_get_msg1(context, enclave_id, sgx_ra_get_ga,
-                                  (sgx_ra_msg1_t*)((uint8_t*)p_msg1_full
-                                  + sizeof(ra_samp_request_header_t)));
+    p_msg1_full = (ra_samp_request_header_t*)
+    malloc(sizeof(ra_samp_request_header_t)
+       + sizeof(sgx_ra_msg1_t));
+    if(NULL == p_msg1_full)
+    {
+        ret = -1;
+        goto CLEANUP;
+    }
+    p_msg1_full->type = TYPE_RA_MSG1;
+    p_msg1_full->size = sizeof(sgx_ra_msg1_t);
+    do
+    {
+        ret = sgx_ra_get_msg1(context, enclave_id, sgx_ra_get_ga,
+          (sgx_ra_msg1_t*)((uint8_t*)p_msg1_full
+              + sizeof(ra_samp_request_header_t)));
             sleep(3); // Wait 3s between retries
         } while (SGX_ERROR_BUSY == ret && busy_retry_time--);
         if(SGX_SUCCESS != ret)
         {
             ret = -1;
             fprintf(OUTPUT, "\nError, call sgx_ra_get_msg1 fail [%s].",
-                    __FUNCTION__);
+                __FUNCTION__);
             goto CLEANUP;
         }
         else
@@ -611,11 +653,11 @@ int main(int argc, char* argv[])
         {
 
             memcpy_s(p_msg1_full->body, p_msg1_full->size,
-                     msg1_samples[GET_VERIFICATION_ARRAY_INDEX()],
-                     p_msg1_full->size);
+               msg1_samples[GET_VERIFICATION_ARRAY_INDEX()],
+               p_msg1_full->size);
 
             fprintf(OUTPUT, "\nInstead of using the recently generated MSG1, "
-                            "we will use the following precomputed MSG1 -\n");
+                "we will use the following precomputed MSG1 -\n");
 
             PRINT_BYTE_ARRAY(OUTPUT, p_msg1_full->body, p_msg1_full->size);
         }
@@ -625,39 +667,39 @@ int main(int argc, char* argv[])
         // msg2 needs to be freed when no longer needed.
         // The ISV decides whether to use linkable or unlinkable signatures.
         fprintf(OUTPUT, "\nSending msg1 to remote attestation service provider."
-                        "Expecting msg2 back.\n");
+            "Expecting msg2 back.\n");
 
 
         ret = ra_network_send_receive("http://SampleServiceProvider.intel.com/",
-                                      p_msg1_full,
-                                      &p_msg2_full);
+          p_msg1_full,
+          &p_msg2_full);
 
         if(ret != 0 || !p_msg2_full)
         {
             fprintf(OUTPUT, "\nError, ra_network_send_receive for msg1 failed "
-                            "[%s].", __FUNCTION__);
+                "[%s].", __FUNCTION__);
             if(VERIFICATION_INDEX_IS_VALID())
             {
                 fprintf(OUTPUT, "\nBecause we are in verification mode we will "
-                                "ignore this error.\n");
+                    "ignore this error.\n");
                 fprintf(OUTPUT, "\nInstead, we will pretend we received the "
-                                "following MSG2 - \n");
+                    "following MSG2 - \n");
 
                 SAFE_FREE(p_msg2_full);
                 ra_samp_response_header_t* precomputed_msg2 =
-                    (ra_samp_response_header_t*)msg2_samples[
-                        GET_VERIFICATION_ARRAY_INDEX()];
+                (ra_samp_response_header_t*)msg2_samples[
+                    GET_VERIFICATION_ARRAY_INDEX()];
                 const size_t msg2_full_size = sizeof(ra_samp_response_header_t)
-                                              +  precomputed_msg2->size;
+                +  precomputed_msg2->size;
                 p_msg2_full =
-                    (ra_samp_response_header_t*)malloc(msg2_full_size);
+                (ra_samp_response_header_t*)malloc(msg2_full_size);
                 if(NULL == p_msg2_full)
                 {
                     ret = -1;
                     goto CLEANUP;
                 }
                 memcpy_s(p_msg2_full, msg2_full_size, precomputed_msg2,
-                         msg2_full_size);
+                   msg2_full_size);
 
                 //PRINT_BYTE_ARRAY(OUTPUT, p_msg2_full,
                   //               sizeof(ra_samp_response_header_t)
@@ -676,12 +718,12 @@ int main(int argc, char* argv[])
             {
 
                 fprintf(OUTPUT, "\nError, didn't get MSG2 in response to MSG1. "
-                                "[%s].", __FUNCTION__);
+                    "[%s].", __FUNCTION__);
 
                 if(VERIFICATION_INDEX_IS_VALID())
                 {
                     fprintf(OUTPUT, "\nBecause we are in verification mode we "
-                                    "will ignore this error.");
+                        "will ignore this error.");
                 }
                 else
                 {
@@ -690,7 +732,7 @@ int main(int argc, char* argv[])
             }
 
             fprintf(OUTPUT, "\nSent MSG1 to remote attestation service "
-                            "provider. Received the following MSG2:\n");
+                "provider. Received the following MSG2:\n");
             //PRINT_BYTE_ARRAY(OUTPUT, p_msg2_full,
               //               sizeof(ra_samp_response_header_t)
                 //             + p_msg2_full->size);
@@ -702,34 +744,34 @@ int main(int argc, char* argv[])
             {
                 // The response should match the precomputed MSG2:
                 ra_samp_response_header_t* precomputed_msg2 =
-                    (ra_samp_response_header_t *)
-                    msg2_samples[GET_VERIFICATION_ARRAY_INDEX()];
+                (ra_samp_response_header_t *)
+                msg2_samples[GET_VERIFICATION_ARRAY_INDEX()];
                 if(memcmp( precomputed_msg2, p_msg2_full,
-                   sizeof(ra_samp_response_header_t) + p_msg2_full->size))
+                 sizeof(ra_samp_response_header_t) + p_msg2_full->size))
                 {
                     fprintf(OUTPUT, "\nVerification ERROR. Our precomputed "
-                                    "value for MSG2 does NOT match.\n");
+                        "value for MSG2 does NOT match.\n");
                     fprintf(OUTPUT, "\nPrecomputed value for MSG2:\n");
                     //PRINT_BYTE_ARRAY(OUTPUT, precomputed_msg2,
                       //               sizeof(ra_samp_response_header_t)
                        //              + precomputed_msg2->size);
                     fprintf(OUTPUT, "\nA more descriptive representation "
-                                    "of precomputed value for MSG2:\n");
+                        "of precomputed value for MSG2:\n");
                     PRINT_ATTESTATION_SERVICE_RESPONSE(OUTPUT,
-                                                       precomputed_msg2);
+                     precomputed_msg2);
                 }
                 else
                 {
                     fprintf(OUTPUT, "\nVerification COMPLETE. Remote "
-                                    "attestation service provider generated a "
-                                    "matching MSG2.\n");
+                        "attestation service provider generated a "
+                        "matching MSG2.\n");
                 }
             }
 
         }
 
         sgx_ra_msg2_t* p_msg2_body = (sgx_ra_msg2_t*)((uint8_t*)p_msg2_full
-                                      + sizeof(ra_samp_response_header_t));
+          + sizeof(ra_samp_response_header_t));
 
 
         uint32_t msg3_size = 0;
@@ -745,9 +787,9 @@ int main(int argc, char* argv[])
                 goto CLEANUP;
             }
             memcpy_s(p_msg3, msg3_size,
-                     msg3_samples[GET_VERIFICATION_ARRAY_INDEX()], msg3_size);
+               msg3_samples[GET_VERIFICATION_ARRAY_INDEX()], msg3_size);
             fprintf(OUTPUT, "\nBecause MSG1 was a precomputed value, the MSG3 "
-                            "we use will also be. PRECOMPUTED MSG3 - \n");
+                "we use will also be. PRECOMPUTED MSG3 - \n");
         }
         else
         {
@@ -757,25 +799,25 @@ int main(int argc, char* argv[])
             do
             {
                 ret = sgx_ra_proc_msg2(context,
-                                   enclave_id,
-                                   sgx_ra_proc_msg2_trusted,
-                                   sgx_ra_get_msg3_trusted,
-                                   p_msg2_body,
-                                   p_msg2_full->size,
-                                   &p_msg3,
-                                   &msg3_size);
+                 enclave_id,
+                 sgx_ra_proc_msg2_trusted,
+                 sgx_ra_get_msg3_trusted,
+                 p_msg2_body,
+                 p_msg2_full->size,
+                 &p_msg3,
+                 &msg3_size);
             } while (SGX_ERROR_BUSY == ret && busy_retry_time--);
             if(!p_msg3)
             {
                 fprintf(OUTPUT, "\nError, call sgx_ra_proc_msg2 fail. "
-                                "p_msg3 = 0x%p [%s].", p_msg3, __FUNCTION__);
+                    "p_msg3 = 0x%p [%s].", p_msg3, __FUNCTION__);
                 ret = -1;
                 goto CLEANUP;
             }
             if(SGX_SUCCESS != (sgx_status_t)ret)
             {
                 fprintf(OUTPUT, "\nError, call sgx_ra_proc_msg2 fail. "
-                                "ret = 0x%08x [%s].", ret, __FUNCTION__);
+                    "ret = 0x%08x [%s].", ret, __FUNCTION__);
                 ret = -1;
                 goto CLEANUP;
             }
@@ -789,7 +831,7 @@ int main(int argc, char* argv[])
         //PRINT_BYTE_ARRAY(OUTPUT, p_msg3, msg3_size);
 
         p_msg3_full = (ra_samp_request_header_t*)malloc(
-                       sizeof(ra_samp_request_header_t) + msg3_size);
+         sizeof(ra_samp_request_header_t) + msg3_size);
         if(NULL == p_msg3_full)
         {
             ret = -1;
@@ -800,7 +842,7 @@ int main(int argc, char* argv[])
         if(memcpy_s(p_msg3_full->body, msg3_size, p_msg3, msg3_size))
         {
             fprintf(OUTPUT,"\nError: INTERNAL ERROR - memcpy failed in [%s].",
-                    __FUNCTION__);
+                __FUNCTION__);
             ret = -1;
             goto CLEANUP;
         }
@@ -814,8 +856,8 @@ int main(int argc, char* argv[])
         // of both the MK for the MAC and the SK for the secret. These keys are
         // established from the SIGMA secure channel binding.
         ret = ra_network_send_receive("http://SampleServiceProvider.intel.com/",
-                                      p_msg3_full,
-                                      &p_att_result_msg_full);
+          p_msg3_full,
+          &p_att_result_msg_full);
         if(ret || !p_att_result_msg_full)
         {
             ret = -1;
@@ -825,30 +867,30 @@ int main(int argc, char* argv[])
 
 
         sample_ra_att_result_msg_t * p_att_result_msg_body =
-            (sample_ra_att_result_msg_t *)((uint8_t*)p_att_result_msg_full
-                                           + sizeof(ra_samp_response_header_t));
+        (sample_ra_att_result_msg_t *)((uint8_t*)p_att_result_msg_full
+         + sizeof(ra_samp_response_header_t));
         if(TYPE_RA_ATT_RESULT != p_att_result_msg_full->type)
         {
             ret = -1;
             fprintf(OUTPUT, "\nError. Sent MSG3 successfully, but the message "
-                            "received was NOT of type att_msg_result. Type = "
-                            "%d. [%s].", p_att_result_msg_full->type,
-                             __FUNCTION__);
+                "received was NOT of type att_msg_result. Type = "
+                "%d. [%s].", p_att_result_msg_full->type,
+                __FUNCTION__);
             goto CLEANUP;
         }
         else
         {
             fprintf(OUTPUT, "\nSent MSG3 successfully. Received an attestation "
-                            "result message back\n.");
+                "result message back\n.");
             if( VERIFICATION_INDEX_IS_VALID() )
             {
                 if(memcmp(p_att_result_msg_full->body,
-                        attestation_msg_samples[GET_VERIFICATION_ARRAY_INDEX()],
-                        p_att_result_msg_full->size) )
+                    attestation_msg_samples[GET_VERIFICATION_ARRAY_INDEX()],
+                    p_att_result_msg_full->size) )
                 {
                     fprintf(OUTPUT, "\nSent MSG3 successfully. Received an "
-                                    "attestation result message back that did "
-                                    "NOT match the expected value.\n");
+                        "attestation result message back that did "
+                        "NOT match the expected value.\n");
                     fprintf(OUTPUT, "\nEXPECTED ATTESTATION RESULT -");
                     //PRINT_BYTE_ARRAY(OUTPUT,
                       //  attestation_msg_samples[GET_VERIFICATION_ARRAY_INDEX()],
@@ -865,9 +907,9 @@ int main(int argc, char* argv[])
         if( VERIFICATION_INDEX_IS_VALID() )
         {
             fprintf(OUTPUT, "\nBecause we used precomputed values for the "
-                            "messages, the attestation result message will "
-                            "not pass further verification tests, so we will "
-                            "skip them.\n");
+                "messages, the attestation result message will "
+                "not pass further verification tests, so we will "
+                "skip them.\n");
             goto CLEANUP;
         }
 
@@ -876,19 +918,19 @@ int main(int argc, char* argv[])
         // This is a simple form for demonstration. In a real product,
         // the ISV may want to communicate more information.
         ret = verify_att_result_mac(enclave_id,
-                &status,
-                context,
-                (uint8_t*)&p_att_result_msg_body->platform_info_blob,
-                sizeof(ias_platform_info_blob_t),
-                (uint8_t*)&p_att_result_msg_body->mac,
-                sizeof(sgx_mac_t));
+            &status,
+            context,
+            (uint8_t*)&p_att_result_msg_body->platform_info_blob,
+            sizeof(ias_platform_info_blob_t),
+            (uint8_t*)&p_att_result_msg_body->mac,
+            sizeof(sgx_mac_t));
         if((SGX_SUCCESS != ret) ||
-           (SGX_SUCCESS != status))
+         (SGX_SUCCESS != status))
         {
             ret = -1;
             fprintf(OUTPUT, "\nError: INTEGRITY FAILED - attestation result "
-                            "message MK based cmac failed in [%s].",
-                            __FUNCTION__);
+                "message MK based cmac failed in [%s].",
+                __FUNCTION__);
             goto CLEANUP;
         }
 
@@ -898,10 +940,10 @@ int main(int argc, char* argv[])
         // When the ISV server decides to trust the enclave, then it will return success.
         // When the ISV server decided to not trust the enclave, then it will return failure.
         if(0 != p_att_result_msg_full->status[0]
-           || 0 != p_att_result_msg_full->status[1])
+         || 0 != p_att_result_msg_full->status[1])
         {
             fprintf(OUTPUT, "\nError, attestation result message MK based cmac "
-                            "failed in [%s].", __FUNCTION__);
+                "failed in [%s].", __FUNCTION__);
             attestation_passed = false;
         }
 
@@ -924,17 +966,17 @@ int main(int argc, char* argv[])
         if(attestation_passed)
         {
             ret = put_secret_data(enclave_id,
-                                  &status,
-                                  context,
-                                  p_att_result_msg_body->secret.payload,
-                                  p_att_result_msg_body->secret.payload_size,
-                                  p_att_result_msg_body->secret.payload_tag);
+              &status,
+              context,
+              p_att_result_msg_body->secret.payload,
+              p_att_result_msg_body->secret.payload_size,
+              p_att_result_msg_body->secret.payload_tag);
             if((SGX_SUCCESS != ret)  || (SGX_SUCCESS != status))
             {
                 fprintf(OUTPUT, "\nError, attestation result message secret "
-                                "using SK based AESGCM failed in [%s]. ret = "
-                                "0x%0x. status = 0x%0x", __FUNCTION__, ret,
-                                 status);
+                    "using SK based AESGCM failed in [%s]. ret = "
+                    "0x%0x. status = 0x%0x", __FUNCTION__, ret,
+                    status);
                 goto CLEANUP;
             }
         }
@@ -942,7 +984,7 @@ int main(int argc, char* argv[])
         fprintf(OUTPUT, "\nRemote attestation success!");
     }
 
-CLEANUP:
+    CLEANUP:
     // Clean-up
     // Need to close the RA key state.
     if(INT_MAX != context)
@@ -953,7 +995,7 @@ CLEANUP:
         {
             ret = -1;
             fprintf(OUTPUT, "\nError, call enclave_ra_close fail [%s].",
-                    __FUNCTION__);
+                __FUNCTION__);
         }
         else
         {
@@ -976,13 +1018,13 @@ CLEANUP:
 
     // enclave manager main code
 	//fprintf(stdout, "\n help");
-        
-	myfile.open ("debug_log.txt");
+
+    myfile.open ("debug_log.txt");
     myfile << "hello from the enclave manager!\n\n";
     //myfile << "SHUTTING DOWN EM" << endl;
-     
+
     freopen( "stderr.log", "w", stderr );
-      
+
 
     uint8_t sig[] = {123,75,110,242,57,192,50,125,54,78,72,61,251,226,117,175,25,116,131,128,179,149,125,117,25,187,53,153,239,250,160,119,72,104,113,241,185,125,229,194,73,69,235,48,97,5,4,138,86,49,158,86,236,193,140,84,63,19,3,33,182,200,254,14};
     size_t sig_size = sizeof(sig); 
@@ -993,66 +1035,39 @@ CLEANUP:
     printf("added input %d\n", re);
 
     std::string oneLine = "";
-    thread test_thread(listenForKeyboard, enclave_id);
-      while (1){
-          unsigned int length = 0;
+    thread test_thread(listenForKeyboard);
+
+    //addForm(vector<string>({"3", "myForm", "sig", "origin", "123", "312", "inp1", "1", "1", "1", "1", "inp2", "12", "32", "2", "2"}));
+    while (1){
+      unsigned int length = 0;
           //read the first four bytes (=> Length)
-          for (int i = 0; i < 4; i++)
-          {
-              unsigned int read_char = getchar();
-              length = length | (read_char << i*8);
-          }
+      for (int i = 0; i < 4; i++)
+      {
+          unsigned int read_char = getchar();
+          length = length | (read_char << i*8);
+      }
 
       string msg = "";
 
-          for (int i = 0; i < length; i++)
-          {
-              msg += getchar();
-          }
-
-          msg = msg.substr(1,msg.length()-2);
-
-          if (!parseMessage(msg,enclave_id)) {
-            break;
-          }
-          /*
-          std::string message = "{\"text\":\"This is a response message\"}";
-          // Collect the length of the message
-          unsigned int len = message.length();
-
-          // Now we can output our message
-          if (msg == "{\"text\":\"#STOP#\"}"){
-              message = "{\"text\":\"EXITING...\"}";
-              len = message.length();
-
-              std::cout   << char(len>>0)
-                          << char(len>>8)
-                          << char(len>>16)
-                          << char(len>>24);
-
-              std::cout << message;
-              break;
-          }
-
-          len = length;
-          std::cout   << char(len>>0)
-                      << char(len>>8)
-                      << char(len>>16)
-                      << char(len>>24);
-
-
-          std::cout << msg << std::flush;
-          exit(0);
-          std::cout << msg << std::flush;*/
+      for (int i = 0; i < length; i++)
+      {
+          msg += getchar();
       }
-      myfile << "SHUTTING DOWN EM" << endl;
-      myfile.close();
 
-    sgx_destroy_enclave(enclave_id);
-    fclose(OUTPUT);
+      msg = msg.substr(1,msg.length()-2);
+
+      if (!parseMessage(msg)) {
+        break;
+    }
+}
+myfile << "SHUTTING DOWN EM" << endl;
+myfile.close();
+
+sgx_destroy_enclave(enclave_id);
+fclose(OUTPUT);
 
 
-	fclose(stderr);
+fclose(stderr);
     ////////////////////////////////////
     //char s[1000] = "print(\"This is a test\");result=1;";
     //ret = run_js(enclave_id, &status, s, strlen(s)+1);
@@ -1080,8 +1095,8 @@ CLEANUP:
     //sgx_destroy_enclave(enclave_id);
 
 
-    
+
     //printf("\nEnter a character before exit ...\n");
     //getchar();
-    return ret;
+return ret;
 }

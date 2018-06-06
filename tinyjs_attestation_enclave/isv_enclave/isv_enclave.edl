@@ -58,9 +58,9 @@ enclave {
 
         public sgx_status_t run_js([in, out, size=len] char* code, size_t len);
 
-        public sgx_status_t add_form([in, size=len] char* name, size_t len, [in, size=origin_len] char* origin, size_t origin_len, uint16_t x, uint16_t y);
+        public sgx_status_t add_form([in, size=len] const char* name, size_t len, [in, size=origin_len] const char* origin, size_t origin_len, uint16_t x, uint16_t y);
 
-        public sgx_status_t add_input([in, size=len1] char* name, size_t len1, [in, size=len2] char* input_i, size_t len2, [in, size=sig_form_size] uint8_t* sig_form, size_t sig_form_size, int validate);
+        public sgx_status_t add_input([in, size=len1] const char* name, size_t len1, [in, size=len2] const char* input_i, size_t len2, [in, size=sig_form_size] const uint8_t* sig_form, size_t sig_form_size, int validate, uint16_t x, uint16_t y, uint16_t height, uint16_t width);
 
         public sgx_status_t onFocus([in, string] const char* formName, [in, string] const char* inputName, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 
