@@ -1036,6 +1036,10 @@ sgx_status_t run_js(char* code, size_t len){
     printf_enc("testing inside: %s\n", res);
     memcpy(code, res.c_str(), res.length()+1);
     // printf_enc("testing: %s", res);
+  std::map<std::string, form>::iterator it;
+  it = forms.find((std::string) "loginform");
+  form f = it->second;
+  parse_form(f, true);
   delete js;
 #ifdef _WIN32
 #ifdef _DEBUG

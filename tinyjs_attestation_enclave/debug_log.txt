@@ -1,0 +1,4 @@
+hello from the enclave manager!
+
+CREATED THREAD
+FAILED BT CONNECT

@@ -126,6 +126,7 @@ void ocall_print_string(const char *str)
 sgx_status_t enc_make_http_request(const char* method, const char* url, 
                             const char* headers, const char* request_data, int* ret_code) {
     //TODO
+    *ret_code = 1;
     return SGX_SUCCESS;
 }
 
@@ -1065,7 +1066,9 @@ if(argc > 2)
     printf("\n");
 
     test_decryption(enclave_id, &re, &form_buf[0], len, &mac[0]);
-    
+    std::string code = "print('starting'); b = 'test'; update_form(\"loginform\", 'password', 'pwd');";
+    //" x = js_make_http_request(b, 'a', \"c\", \"d\"); print(x); print('requested)';";
+    run_js(enclave_id, &re, (char*) &code[0], code.length()+1);
 
     //end testing
 
