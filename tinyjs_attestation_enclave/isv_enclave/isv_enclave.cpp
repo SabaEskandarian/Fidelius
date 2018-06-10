@@ -497,7 +497,7 @@ void printForm(form f){
 }
 
 std::string parse_form(form f, bool include_vals) {
-    std::string start = "{";
+    std::string start = "{\"formname\": \"" + f.name + "\", ";
     std::string end = "}";
     std::string parsed = "" + start;
 
@@ -523,7 +523,7 @@ std::string parse_form(form f, bool include_vals) {
 }
 
 std::string parse_form_secure(form f, uint8_t* p_gcm_mac) {
-    std::string start = "{";
+    std::string start = "{\"formname\": \"" + f.name + "\", ";
     std::string end = "}";
 
     std::string parsed = "" + start;
@@ -708,9 +708,6 @@ sgx_status_t add_form(const char* name, size_t len,
         new_form.y = y;
         new_form.validated = false;
         printf_enc("added new form: %s\n", eName);
-        input new_input;
-        new_input.value = eName;
-        new_form.inputs.insert(std::pair<std::string, input>("formName", new_input));
         forms.insert(std::pair<std::string, form>(eName, new_form));
         printf_enc("f: %s\n" , parse_form(new_form, true));
         return SGX_SUCCESS;
