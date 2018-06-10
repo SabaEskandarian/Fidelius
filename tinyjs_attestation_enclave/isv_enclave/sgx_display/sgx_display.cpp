@@ -35,6 +35,17 @@ static uint16_t seq_no = 0;
 extern std::map<std::string, form> forms;
 extern std::string origin;
 
+void printFormDisplay(form f){
+    printf_enc("# elements in form: %d\n", f.inputs.size());
+    for(std::map<std::string, input>::const_iterator it = f.inputs.begin();
+    it != f.inputs.end(); ++it)
+    {
+        printf_enc("input name: %s\n", it->first);
+    }
+}
+
+
+
 /* Creates an encrypted message to add an overlay on the screen. The header
  * information is authenticated and the input field data is encrypted. All the
  * overlays for a form are stored on the raspberry pi with an ID. Writing to
@@ -80,10 +91,13 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
     ocall_print_string("DISPLAY: FORM NOT FOUND");
   }
   form form = form_it->second;
+  printFormDisplay(form);
+  printf_enc("NUMBER OF INPUTS: %d", form.inputs.size());
+
   printf_enc("DISPLAY: FORM ORGIN = %s", origin.c_str());
   /* Add the origin bitmap */
-  bitmap_len = add_bitmap_data(output, form.x, form.y, 100,
-                            10, origin);
+  bitmap_len = add_bitmap_data(output, form.x, form.y, 200,
+                            30, origin);
   *out_len += bitmap_len;
   output += bitmap_len;
 

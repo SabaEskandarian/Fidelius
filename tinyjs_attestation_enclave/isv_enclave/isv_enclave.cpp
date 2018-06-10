@@ -517,7 +517,7 @@ std::string parse_form(form f, bool include_vals) {
     }
     parsed.pop_back();
     parsed = parsed + end;
-    printf_enc("parsed form: %s\n", parsed.c_str());
+    //printf_enc("parsed form: %s\n", parsed.c_str());
     // printf_enc("len: %d\n", parsed.length());
     return parsed; 
 }
@@ -710,11 +710,17 @@ sgx_status_t add_form(const char* name, size_t len,
         printf_enc("added new form: %s\n", eName);
         input new_input;
         new_input.value = eName;
+        new_input.x = 10;
+        new_input.y = 10;
+        new_input.width = 10;
+        new_input.height = 10;
+        new_input.name = "dummy form";
         new_form.inputs.insert(std::pair<std::string, input>("formName", new_input));
         forms.insert(std::pair<std::string, form>(eName, new_form));
         printf_enc("f: %s\n" , parse_form(new_form, true));
         return SGX_SUCCESS;
     }
+
 }
 
 //adds a new input field to a form
@@ -843,7 +849,7 @@ sgx_status_t submit_form(const char* formName,
   if(!f.validated) {
     return SGX_ERROR_INVALID_PARAMETER;
   }
-  printf_enc("ready\n");
+  //printf_enc("ready\n");
 
   //std::string str_form = parse_form_secure(f, p_gcm_mac); 
   std::string str_form = parse_form(f, true);
@@ -870,14 +876,14 @@ sgx_status_t submit_form(const char* formName,
 }
 
 sgx_status_t test_decryption(uint8_t* form, uint32_t form_size, uint8_t* mac) {
-    printf_enc("decrypting\n");
-    printf_enc("form size %d\n", form_size);
+    //printf_enc("decrypting\n");
+    //printf_enc("form size %d\n", form_size);
     uint8_t output[form_size] = {0};
     uint8_t aes_gcm_iv[12] = {0};
     for(int i = 0; i < 16; i++) {
-        printf_enc("%d", mac[i]);
+        //printf_enc("%d", mac[i]);
     }
-    printf_enc("\n");
+    //printf_enc("\n");
     sgx_status_t ret =  sgx_rijndael128GCM_decrypt((const sgx_aes_gcm_128bit_tag_t *) &g_secret,
         (const uint8_t*)  &form,
         form_size,
@@ -887,13 +893,13 @@ sgx_status_t test_decryption(uint8_t* form, uint32_t form_size, uint8_t* mac) {
         NULL,
         0,
         (sgx_aes_gcm_128bit_tag_t *) mac);
-    printf_enc("ret %d\n", (int)ret);
+    //printf_enc("ret %d\n", (int)ret);
 
-    printf_enc("finished\n");
+    //printf_enc("finished\n");
     for(int i = 0; i < form_size; i++) {
-        printf_enc("%c", (char)output[i]);
+        //printf_enc("%c", (char)output[i]);
     }
-    printf_enc("\n");
+    //printf_enc("\n");
 
 }
 
@@ -913,22 +919,8 @@ void js_update_form(CScriptVar *v, void *userdata) {
     std::string formName = v->getParameter("formName")->getString();
     std::string inputName = v->getParameter("inputName")->getString();
     std::string val = v->getParameter("val")->getString();
-    std::map<std::string, form>::iterator it;
-    it = forms.find((std::string) formName);
-    if(it == forms.end()) {
-        printf_enc("Invalid form name: %d\n", formName);
-        return;
-    }
-    form f = it->second;
-    std::map<std::string, input>::iterator it2;
-    it2 = f.inputs.find((std::string) inputName);
-    if(it2 == f.inputs.end()) {
-        printf_enc("Invalid input name: %d\n", inputName);
-        return;
-    }
-
-    it2->second.value =val;
-    printf_enc("set %s to %s\n", it2->first, val);
+    forms[formName].inputs[inputName].value = val;
+    printf_enc("set %s to %s\n", inputName, val);
 }
 
 void js_make_http_request(CScriptVar *v, void* userdata) {
@@ -1008,12 +1000,13 @@ sgx_status_t run_js(char* code, size_t len){
         std::string form = parse_form(it->second, true);
         str_forms += name + " = " + form + ";";
     }
-    str_forms = "print('working');update_form('tmp', 'tst', 'working');"; //remove long-term
+    //str_forms = "print('working');update_form('tmp', 'tst', 'working');"; //remove long-term
 
     char tmp[len];
     memcpy(tmp, code, len);
     std::string enc_code = std::string(tmp);
     enc_code = str_forms + enc_code;
+    printf_enc("\n%s\n", enc_code.c_str());
     std::string res;
     CTinyJS *js = new CTinyJS();
     registerFunctions(js);
@@ -1036,6 +1029,10 @@ sgx_status_t run_js(char* code, size_t len){
     printf_enc("testing inside: %s\n", res);
     memcpy(code, res.c_str(), res.length()+1);
     // printf_enc("testing: %s", res);
+  std::map<std::string, form>::iterator it;
+  it = forms.find((std::string) "loginform");
+  form f = it->second;
+  parse_form(f, true);
   delete js;
 #ifdef _WIN32
 #ifdef _DEBUG
@@ -1074,7 +1071,12 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     
     status = gcm_decrypt(&ciphertext[0],1,&p_char[0], &iv[0], &tag);
     if (p_char[0] == 0x7A){//letter z
-            p_char[0] = -1; //basically doing nothing
+        p_char[0] = -1; //basically doing nothing
+    }
+    else if(p_char[0] == 0x7f) {
+        if (curInput.value.length() != 0) {
+            curInput.value = curInput.value.substr(0, curInput.value.length()-1);
+        }
     }
     else{
         curInput.value += p_char[0];
