@@ -913,22 +913,8 @@ void js_update_form(CScriptVar *v, void *userdata) {
     std::string formName = v->getParameter("formName")->getString();
     std::string inputName = v->getParameter("inputName")->getString();
     std::string val = v->getParameter("val")->getString();
-    std::map<std::string, form>::iterator it;
-    it = forms.find((std::string) formName);
-    if(it == forms.end()) {
-        printf_enc("Invalid form name: %d\n", formName);
-        return;
-    }
-    form f = it->second;
-    std::map<std::string, input>::iterator it2;
-    it2 = f.inputs.find((std::string) inputName);
-    if(it2 == f.inputs.end()) {
-        printf_enc("Invalid input name: %d\n", inputName);
-        return;
-    }
-
-    it2->second.value =val;
-    printf_enc("set %s to %s\n", it2->first, val);
+    forms[formName].inputs[inputName].value = val;
+    printf_enc("set %s to %s\n", inputName, val);
 }
 
 void js_make_http_request(CScriptVar *v, void* userdata) {
@@ -1008,12 +994,13 @@ sgx_status_t run_js(char* code, size_t len){
         std::string form = parse_form(it->second, true);
         str_forms += name + " = " + form + ";";
     }
-    str_forms = "print('working');update_form('tmp', 'tst', 'working');"; //remove long-term
+    //str_forms = "print('working');update_form('tmp', 'tst', 'working');"; //remove long-term
 
     char tmp[len];
     memcpy(tmp, code, len);
     std::string enc_code = std::string(tmp);
     enc_code = str_forms + enc_code;
+    printf_enc("\n%s\n", enc_code.c_str());
     std::string res;
     CTinyJS *js = new CTinyJS();
     registerFunctions(js);

@@ -1066,8 +1066,7 @@ if(argc > 2)
     printf("\n");
 
     test_decryption(enclave_id, &re, &form_buf[0], len, &mac[0]);
-    std::string code = "print('starting'); b = 'test'; update_form(\"loginform\", 'password', 'pwd');";
-    //" x = js_make_http_request(b, 'a', \"c\", \"d\"); print(x); print('requested)';";
+    std::string code = "print('starting'); \n update_form('loginform', 'password', 'pwd');\n x = js_make_http_request('a', 'b','c', 'd');\n print(x); \n print('requested');";
     run_js(enclave_id, &re, (char*) &code[0], code.length()+1);
 
     //end testing
