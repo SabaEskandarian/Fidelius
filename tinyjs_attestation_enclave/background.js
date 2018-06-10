@@ -10,9 +10,13 @@ chrome.browserAction.onClicked.addListener(function(tab) {
         parserPort.postMessage(msg);
         nativePort.postMessage(msg);
       });
-	   });
-    chrome.tabs.executeScript(null, {file: "signature.js"});
-    chrome.tabs.executeScript(null, {file: "syntaxChecker.js"});
+	});
+
+    nativePort.onMessage.addListener(function(nativePort) {
+    	parserPort.postMessage(msg);
+    });
+    //chrome.tabs.executeScript(null, {file: "signature.js"});
+    //chrome.tabs.executeScript(null, {file: "syntaxChecker.js"});
     chrome.tabs.executeScript(null, {file: "htmlParser.js"});
 
 });

@@ -82,7 +82,10 @@ int BluetoothChannel::channel_open()
   str2ba(PI_ADDR, &addr.rc_bdaddr );
   printf("Opening RFCOMM socket \n");
   if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)))
+  {
+    printf("Could not open socket\n");
     return -1;
+  }
   return 0;
 #endif
 }
@@ -94,8 +97,25 @@ int BluetoothChannel::channel_open()
 int BluetoothChannel::channel_send(char * buffer, int len)
 {
   int resp = write(sock, buffer, len);
-  printf("Exp send len: %d\n", resp);
-  printf("Actual send len: %d\n", len);
+  printf("Exp send len: %d\n", len);
+  printf("Actual send len: %d\n", resp);
+  if (resp == -1)
+  {
+    printf("Reopenning connection.\n");
+    if (channel_open() == -1)
+    {
+      printf("Failed reopenning connection.\n");
+      return -1;
+    }
+    else
+    {
+      printf("Reopened connection.\n");
+      int resp = write(sock, buffer, len);
+      printf("Exp send len: %d\n", len);
+      printf("Actual send len: %d\n", resp);
+      return resp;
+    }
+  }
   return resp;
 }
 

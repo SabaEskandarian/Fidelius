@@ -1,72 +1,72 @@
 hello from the enclave manager!
 
 CREATED THREAD
-ADD FORM with name: loginform signature: [-554551576,637250094,1545987529,2040429243,-2007507316,-1791641486,-351972101,-1402313555,232667270,348594860,180296198,1274763947,-343205030,-1201029737,2051006672,1181796048]
-	ADD INPUT: username (130,0) 
-	ADD INPUT: password (124,31) 
+FAILED BT CONNECT
+!!!add_form ecall FAILED
+ADD FORM with name: payment signature: Kg7eVNk&3L
+	ADD INPUT: holder (208,0) 
+!!!add_input ecall FAILED
+	ADD INPUT: cc (209,31) 
+!!!add_input ecall FAILED
+	ADD INPUT: cvv (114,91) 
+!!!add_input ecall FAILED
 
 
-FOCUS on form: loginform input: username at: 130.306, 87.6562 width: 300.444 height: 25.5
+FOCUS on form: payment input: holder at: 208.922, 87.6562 width: 253.5 height: 25.5
 
 
-BLUR on form: loginform input: username at: 73.2969, 58.4375
+BLUR on form: payment input: holder at: 139.281, 58.4375
 
 
-ADD FORM with name: loginform signature: [1707194137,-579945780,2126495868,-2136242305,117280191,-2006289487,-399488870,1190917670,-623310393,1731456810,-2110884971,1984461811,-434890688,-1972137340,-1712496966,-1341718258]
-	ADD INPUT: username (130,0) 
-	ADD INPUT: password (124,31) 
+FOCUS on form: payment input: cc at: 209.953, 119.156 width: 253.5 height: 25.5
 
 
-ADD FORM with name: loginform signature: [1707194137,-579945780,2126495868,-2136242305,117280191,-2006289487,-399488870,1190917670,-623310393,1731456810,-2110884971,1984461811,-434890688,-1972137340,-1712496966,-1341718258]
-	ADD INPUT: username (130,0) 
-	ADD INPUT: password (124,31) 
+BLUR on form: payment input: cc at: 139.969, 79.4375
 
 
-got encrypted input
-KEYB BUFFER: 
-
-Executing gcm_decrypt function from enclave...
-Decrypted Characters(in Enclave):0
-Status_decrypt: 3001
-
-Char obtained: 0
-new value: 
-got encrypted input
-KEYB BUFFER: 
-
-Executing gcm_decrypt function from enclave...
-Decrypted Characters(in Enclave):0
-Status_decrypt: 3001
-
-Char obtained: 0
-new value: 
-got encrypted input
-KEYB BUFFER: 
-
-Executing gcm_decrypt function from enclave...
-Decrypted Characters(in Enclave):0
-Status_decrypt: 3001
-
-Char obtained: 0
-new value: 
-ADD FORM with name: loginform signature: [18346800,2062773513,1027021708,490969587,1839316049,1541533302,697702833,1800210449,-1630564476,209990932,1289534881,-2001865157,1950307151,1546710609,-456511732,-182764109]
-	ADD INPUT: username (130,0) 
-	ADD INPUT: password (124,31) 
+FOCUS on form: payment input: cvv at: 114.211, 179.156 width: 253.5 height: 25.5
 
 
-ADD FORM with name: loginform signature: [18346800,2062773513,1027021708,490969587,1839316049,1541533302,697702833,1800210449,-1630564476,209990932,1289534881,-2001865157,1950307151,1546710609,-456511732,-182764109]
-	ADD INPUT: username (130,0) 
-	ADD INPUT: password (124,31) 
+BLUR on form: payment input: cvv at: 76.1406, 119.438
 
 
-ADD FORM with name: loginform signature: [18346800,2062773513,1027021708,490969587,1839316049,1541533302,697702833,1800210449,-1630564476,209990932,1289534881,-2001865157,1950307151,1546710609,-456511732,-182764109]
-	ADD INPUT: username (130,0) 
-	ADD INPUT: password (124,31) 
+FOCUS on form: payment input: cc at: 209.953, 119.156 width: 253.5 height: 25.5
 
 
-ADD FORM with name: loginform signature: [367458313,-139144627,971268444,-172044668,1298538437,424778191,-775996785,-938681165,1252349062,-1666076919,140954226,-1767403157,-1665994069,-1313483189,2014135494,1551720413]
-	ADD INPUT: username (130,0) 
-	ADD INPUT: password (124,31) 
+BLUR on form: payment input: cc at: 139.969, 79.4375
+
+
+FOCUS on form: payment input: holder at: 208.922, 87.6562 width: 253.5 height: 25.5
+
+
+BLUR on form: payment input: holder at: 139.281, 58.4375
+
+
+FOCUS on form: payment input: cc at: 209.953, 119.156 width: 253.5 height: 25.5
+
+
+BLUR on form: payment input: cc at: 139.969, 79.4375
+
+
+FOCUS on form: payment input: holder at: 208.922, 87.6562 width: 253.5 height: 25.5
+
+
+BLUR on form: payment input: holder at: 139.281, 58.4375
+
+
+FOCUS on form: payment input: cvv at: 114.211, 179.156 width: 253.5 height: 25.5
+
+
+BLUR on form: payment input: cvv at: 76.1406, 119.438
+
+
+FOCUS on form: payment input: cc at: 209.953, 119.156 width: 253.5 height: 25.5
+
+
+BLUR on form: payment input: cc at: 139.969, 79.4375
+
+
+FOCUS on form: payment input: holder at: 208.922, 87.6562 width: 253.5 height: 25.5
 
 
 SHUTTING DOWN EM

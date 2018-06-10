@@ -84,7 +84,7 @@
 
 #define ENCLAVE_PATH "isv_enclave.signed.so"
 
-double SCALE_X = 1920.0/1080;
+double SCALE_X = 1920.0/1280;
 double SCALE_Y = 1080.0/720;
 
 uint8_t* msg1_samples[] = { msg1_sample1, msg1_sample2 };
@@ -95,8 +95,9 @@ uint8_t* attestation_msg_samples[] =
 
 using namespace std;
 
-KeyboardDriver KB("/dev/ttyACM0", "/dev/ttyACM1");
-//KeyboardDriver KB("keyboard_test", "empty");
+//KeyboardDriver KB("/dev/ttyACM0", "/dev/ttyACM1");
+
+KeyboardDriver KB("keyboard_test", "empty");
 ofstream myfile;
 
 uint8_t convert(char *target){
@@ -120,7 +121,15 @@ void ocall_print_string(const char *str)
     /* Proxy/Bridge will check the length and null-terminate
      * the input string to prevent buffer overflow.
      */
-    myfile << str << endl;;
+    printf("%s", str);
+    //myfile << str << endl;;
+}
+
+sgx_status_t enc_make_http_request(const char* method, const char* url, 
+                            const char* headers, const char* request_data, int* ret_code) {
+    //TODO
+    *ret_code = 1;
+    return SGX_SUCCESS;
 }
 
 
@@ -229,7 +238,7 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 this ivar is for debugging only, it will close the debug
 log after the EM recieves/parses the specified number of commands.
 */
-int eventsUntilCloseLog = 9;
+int eventsUntilCloseLog = 20;
 
 bool runningManager = true;
 pair<string, string> focusInput;
@@ -279,8 +288,9 @@ void addForm(vector<string> argv) {
     string origin = argv[3];
     uint16_t formX = (uint16_t)(stod(argv[4], NULL)*SCALE_X);
     uint16_t formY = (uint16_t)(stod(argv[5], NULL)*SCALE_Y);
-    add_form(enclave_id, &ret, name.c_str(), name.length(), 
-        origin.c_str(), origin.length(), formX, formY); //ECALL
+    add_form(enclave_id, &ret, name.c_str(), name.length()+1, 
+        origin.c_str(), origin.length()+1, formX, formY); //ECALL
+    if (ret != SGX_SUCCESS) myfile << "!!!add_form ecall FAILED" << endl;
 	
 	myfile << "ADD FORM with name: " << name  << " signature: " << signature << endl;
 	for (int i = 6; i < argv.size(); i+=5) {
@@ -290,9 +300,11 @@ void addForm(vector<string> argv) {
         uint16_t x = (uint16_t)(stod(argv[i+3], NULL)*SCALE_X);
         uint16_t y = (uint16_t)(stod(argv[i+4], NULL)*SCALE_Y);
         if (DEBUG_MODE) myfile << "\tADD INPUT: " << inputName << " (" << x << "," << y << ") " << endl;
-        add_input(enclave_id, &ret, name.c_str(), name.length(), inputName.c_str(), inputName.length(),
-                    (uint8_t*)(signature.c_str()), signature.length(), 
+        add_input(enclave_id, &ret, name.c_str(), name.length()+1, inputName.c_str(), inputName.length()+1,
+                    (uint8_t*)(signature.c_str()), signature.length()+1, 
                     (i+5 < argv.size()) ? 0 : 1, x, y, h, w); //ECALL
+        if (ret != SGX_SUCCESS) myfile << "!!!add_input ecall FAILED" << endl;
+
 	}
 }
 
@@ -413,34 +425,46 @@ bool parseMessage(string message) {
 void listenForKeyboard() {
     myfile << "CREATED THREAD" << endl;
     myfile.flush();
-    /*BluetoothChannel connection;
+    BluetoothChannel connection;
     if (connection.channel_open() < 0) {
         myfile << "FAILED BT CONNECT" << endl;
         return;
-    }*/
+    }
     uint8_t keyboardBuff[58] = {0};
     while(true) {
-        //unique_lock<mutex> lk(keyboard_mutex);
-        //cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
-        KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
-        myfile << "got encrypted input" << endl;
-        uint8_t bytebuff[29];
-        hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
-        sgx_status_t ret;
-        myfile << "KEYB BUFFER: " << bytebuff << endl;
-        myfile << keyboardBuff << endl;
-        get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
-        /*uint8_t outBuff[524288];
+        unique_lock<mutex> lk(keyboard_mutex);
+        cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
+
+        
+        uint8_t outBuff[524288];
         uint32_t out_len;
+        myfile << "MAKE DISPLAY ECALL" << endl;
+        myfile << "DISPLAY ECALL FOR FORM " << focusInput.first.c_str() << endl;
         create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
+        myfile << "DISPLAY ECALL RETURNED" << endl;
         if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
             myfile << "FAILED BT SEND" << endl;
-        }*/
+        }
+        myfile << "KEYB: trying to get encrypted input" << endl;
+        int enc_bytes = KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
+        if (enc_bytes <= 0) {
+            myfile << "TIMEOUT on encrypted input" << endl;
+        }
+        else
+        {
+            myfile << "got encrypted input" << endl;
+            uint8_t bytebuff[29];
+            hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
+            sgx_status_t ret;
+            myfile << "KEYB BUFFER: " << bytebuff << endl;
+            myfile << keyboardBuff << endl;
+            get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
+        }
     }
-    /*uint32_t out_len;
+    uint32_t out_len;
     uint8_t outBuff[524288];
     create_remove_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str());
-    connection.channel_close();*/
+    connection.channel_close();
 }
 
 
@@ -1019,6 +1043,36 @@ if(argc > 2)
 
     freopen( "stderr.log", "w", stderr );
 
+    //testing
+    uint8_t sig[] = {123,75,110,242,57,192,50,125,54,78,72,61,251,226,117,175,25,116,131,128,179,149,125,117,25,187,53,153,239,250,160,119,72,104,113,241,185,125,229,194,73,69,235,48,97,5,4,138,86,49,158,86,236,193,140,84,63,19,3,33,182,200,254,14};
+    size_t sig_size = sizeof(sig); 
+    sgx_status_t re;
+    add_form(enclave_id, &re, "loginform", 10, "a", 2, 0, 0);
+    add_input(enclave_id, &re, "loginform", 10, "username", 9, NULL, 0, 0, 0, 0, 0, 0);
+    add_input(enclave_id, &re, "loginform", 10, "password", 9, (uint8_t*)&sig, sig_size, 1, 0, 0, 0, 0); 
+    printf("added input %d\n", re);
+
+    uint32_t len; 
+    form_len(enclave_id, &len, "loginform");
+    uint8_t form_buf[(len*4)] = {0};
+    uint8_t mac[16] = {0};
+    submit_form(enclave_id, &re, "loginform", &form_buf[0], len, &mac[0]);
+    printf("size %d\n", len);
+    for(int i = 0; i < len; i++) {
+        printf("%c", (char)form_buf[i]);
+    }
+    printf("\n");
+    for(int i = 0; i < 16; i++) {
+        printf("%d", mac[i]);
+    }
+    printf("\n");
+
+    test_decryption(enclave_id, &re, &form_buf[0], len, &mac[0]);
+    std::string code = "print('starting'); b = 'test'; update_form(\"loginform\", 'password', 'pwd');";
+    //" x = js_make_http_request(b, 'a', \"c\", \"d\"); print(x); print('requested)';";
+    run_js(enclave_id, &re, (char*) &code[0], code.length()+1);
+
+    //end testing
 
     std::string oneLine = "";
     thread test_thread(listenForKeyboard);
@@ -1047,6 +1101,7 @@ if(argc > 2)
     }
 }
 myfile << "SHUTTING DOWN EM" << endl;
+cout << "hello" << endl;
 myfile.close();
 
 sgx_destroy_enclave(enclave_id);

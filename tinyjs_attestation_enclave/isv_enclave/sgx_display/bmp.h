@@ -157,6 +157,13 @@ typedef struct bitmap_font {
  * ### Creating and Destroying bitmaps
  */
 
+
+/**
+ * #### Make text for a single line output right aligned
+ */
+Bitmap *bm_make_text (int w, int h, unsigned int col, unsigned int bg_col,
+                      int bg_alpha, const char *text);
+
 /**
  * #### `Bitmap *bm_create(int w, int h)`
  *

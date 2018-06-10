@@ -112,6 +112,13 @@ typedef struct ms_get_keyboard_chars_t {
 	uint8_t* ms_p_src;
 } ms_get_keyboard_chars_t;
 
+typedef struct ms_test_decryption_t {
+	sgx_status_t ms_retval;
+	uint8_t* ms_form;
+	uint32_t ms_form_size;
+	uint8_t* ms_gcm_mac;
+} ms_test_decryption_t;
+
 typedef struct ms_sgx_ra_get_ga_t {
 	sgx_status_t ms_retval;
 	sgx_ra_context_t ms_context;
@@ -153,6 +160,15 @@ typedef struct ms_create_remove_overlay_msg_t {
 typedef struct ms_ocall_print_string_t {
 	char* ms_str;
 } ms_ocall_print_string_t;
+
+typedef struct ms_enc_make_http_request_t {
+	sgx_status_t ms_retval;
+	char* ms_method;
+	char* ms_url;
+	char* ms_headers;
+	char* ms_request_data;
+	int* ms_ret_code;
+} ms_enc_make_http_request_t;
 
 typedef struct ms_create_session_ocall_t {
 	sgx_status_t ms_retval;
@@ -219,6 +235,14 @@ static sgx_status_t SGX_CDECL isv_enclave_ocall_print_string(void* pms)
 {
 	ms_ocall_print_string_t* ms = SGX_CAST(ms_ocall_print_string_t*, pms);
 	ocall_print_string((const char*)ms->ms_str);
+
+	return SGX_SUCCESS;
+}
+
+static sgx_status_t SGX_CDECL isv_enclave_enc_make_http_request(void* pms)
+{
+	ms_enc_make_http_request_t* ms = SGX_CAST(ms_enc_make_http_request_t*, pms);
+	ms->ms_retval = enc_make_http_request((const char*)ms->ms_method, (const char*)ms->ms_url, (const char*)ms->ms_headers, (const char*)ms->ms_request_data, ms->ms_ret_code);
 
 	return SGX_SUCCESS;
 }
@@ -297,11 +321,12 @@ static sgx_status_t SGX_CDECL isv_enclave_sgx_thread_set_multiple_untrusted_even
 
 static const struct {
 	size_t nr_ocall;
-	void * table[10];
+	void * table[11];
 } ocall_table_isv_enclave = {
-	10,
+	11,
 	{
 		(void*)isv_enclave_ocall_print_string,
+		(void*)isv_enclave_enc_make_http_request,
 		(void*)isv_enclave_create_session_ocall,
 		(void*)isv_enclave_exchange_report_ocall,
 		(void*)isv_enclave_close_session_ocall,
@@ -494,13 +519,25 @@ sgx_status_t get_keyboard_chars(sgx_enclave_id_t eid, sgx_status_t* retval, uint
 	return status;
 }
 
+sgx_status_t test_decryption(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* form, uint32_t form_size, uint8_t* gcm_mac)
+{
+	sgx_status_t status;
+	ms_test_decryption_t ms;
+	ms.ms_form = form;
+	ms.ms_form_size = form_size;
+	ms.ms_gcm_mac = gcm_mac;
+	status = sgx_ecall(eid, 14, &ocall_table_isv_enclave, &ms);
+	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
+	return status;
+}
+
 sgx_status_t sgx_ra_get_ga(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t context, sgx_ec256_public_t* g_a)
 {
 	sgx_status_t status;
 	ms_sgx_ra_get_ga_t ms;
 	ms.ms_context = context;
 	ms.ms_g_a = g_a;
-	status = sgx_ecall(eid, 14, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 15, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -514,7 +551,7 @@ sgx_status_t sgx_ra_proc_msg2_trusted(sgx_enclave_id_t eid, sgx_status_t* retval
 	ms.ms_p_qe_target = (sgx_target_info_t*)p_qe_target;
 	ms.ms_p_report = p_report;
 	ms.ms_p_nonce = p_nonce;
-	status = sgx_ecall(eid, 15, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 16, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -528,7 +565,7 @@ sgx_status_t sgx_ra_get_msg3_trusted(sgx_enclave_id_t eid, sgx_status_t* retval,
 	ms.ms_qe_report = qe_report;
 	ms.ms_p_msg3 = p_msg3;
 	ms.ms_msg3_size = msg3_size;
-	status = sgx_ecall(eid, 16, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 17, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -541,7 +578,7 @@ sgx_status_t create_add_overlay_msg(sgx_enclave_id_t eid, uint8_t* output, uint3
 	ms.ms_out_len = out_len;
 	ms.ms_form_id = (char*)form_id;
 	ms.ms_form_id_len = form_id ? strlen(form_id) + 1 : 0;
-	status = sgx_ecall(eid, 17, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 18, &ocall_table_isv_enclave, &ms);
 	return status;
 }
 
@@ -553,7 +590,7 @@ sgx_status_t create_remove_overlay_msg(sgx_enclave_id_t eid, uint8_t* output, ui
 	ms.ms_out_len = out_len;
 	ms.ms_form_id = (char*)form_id;
 	ms.ms_form_id_len = form_id ? strlen(form_id) + 1 : 0;
-	status = sgx_ecall(eid, 18, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 19, &ocall_table_isv_enclave, &ms);
 	return status;
 }
 
