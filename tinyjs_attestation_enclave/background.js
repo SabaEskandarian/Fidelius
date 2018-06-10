@@ -11,7 +11,7 @@ chrome.browserAction.onClicked.addListener(function(tab) {
         nativePort.postMessage(msg);
       });
 	   });
-    //chrome.tabs.executeScript(null, {file: "signature.js"});
+    chrome.tabs.executeScript(null, {file: "signature.js"});
     chrome.tabs.executeScript(null, {file: "syntaxChecker.js"});
     chrome.tabs.executeScript(null, {file: "htmlParser.js"});
 
