@@ -843,12 +843,9 @@ sgx_status_t submit_form(const char* formName,
   if(!f.validated) {
     return SGX_ERROR_INVALID_PARAMETER;
   }
-  printf_enc("ready\n");
-
-  //std::string str_form = parse_form_secure(f, p_gcm_mac); 
   std::string str_form = parse_form(f, true);
   uint8_t aes_gcm_iv[12] = {0};
-  sgx_status_t ret = sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_tag_t *) (&g_secret),
+  sgx_status_t ret = sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_key_t *) &g_secret,
         (const uint8_t*) &str_form[0],
         encr_size,  
         dest,
@@ -858,28 +855,17 @@ sgx_status_t submit_form(const char* formName,
         0,
         (sgx_aes_gcm_128bit_tag_t *) (p_gcm_mac));
 
-  //printf_enc("p form %s\n", str_form.c_str());
   if(str_form == "-1") {
     return SGX_ERROR_INVALID_PARAMETER;
   }
-  // printf_enc("encr_size %d\n", encr_size);
-  // printf_enc("str size %d\n", str_form.length());
-  // memcpy(dest, str_form, str_form.length()+1);
-  // printf_enc("got here\n");
   return SGX_SUCCESS;
 }
 
 sgx_status_t test_decryption(uint8_t* form, uint32_t form_size, uint8_t* mac) {
-    printf_enc("decrypting\n");
-    printf_enc("form size %d\n", form_size);
     uint8_t output[form_size] = {0};
     uint8_t aes_gcm_iv[12] = {0};
-    for(int i = 0; i < 16; i++) {
-        printf_enc("%d", mac[i]);
-    }
-    printf_enc("\n");
-    sgx_status_t ret =  sgx_rijndael128GCM_decrypt((const sgx_aes_gcm_128bit_tag_t *) &g_secret,
-        (const uint8_t*)  &form,
+    sgx_status_t ret =  sgx_rijndael128GCM_decrypt((const sgx_aes_gcm_128bit_key_t *) &g_secret,
+        (const uint8_t*)  &form[0],
         form_size,
         &output[0],
         &aes_gcm_iv[0],
@@ -887,14 +873,12 @@ sgx_status_t test_decryption(uint8_t* form, uint32_t form_size, uint8_t* mac) {
         NULL,
         0,
         (sgx_aes_gcm_128bit_tag_t *) mac);
-    printf_enc("ret %d\n", (int)ret);
 
-    printf_enc("finished\n");
+    printf_enc("decrypted form\n");
     for(int i = 0; i < form_size; i++) {
         printf_enc("%c", (char)output[i]);
     }
     printf_enc("\n");
-
 }
 
 int t = 5;
@@ -946,7 +930,7 @@ void js_make_http_request(CScriptVar *v, void* userdata) {
         return;    
     }
     request_data = std::string((char *) &encr_val[0]);
-
+    printf_enc(request_data.c_str());
     int ret_code = 0;
     enc_make_http_request(&ret, method.c_str(), url.c_str(), headers.c_str(), request_data.c_str(), &ret_code);
     if(ret != SGX_SUCCESS) {
@@ -1028,11 +1012,6 @@ sgx_status_t run_js(char* code, size_t len){
   form f = it->second;
   parse_form(f, true);
   delete js;
-#ifdef _WIN32
-#ifdef _DEBUG
-  _CrtDumpMemoryLeaks();
-#endif
-#endif
   return SGX_SUCCESS;
 }
 
