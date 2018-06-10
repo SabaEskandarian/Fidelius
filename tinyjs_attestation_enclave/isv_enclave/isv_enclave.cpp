@@ -496,6 +496,14 @@ void printForm(form f){
     }
 }
 
+int test = 4;
+int print_debug() {
+    test *= 2;
+    printf_enc("testing\n");
+    return test;
+}
+
+
 std::string parse_form(form f, bool include_vals) {
     std::string start = "{\"formname\": \"" + f.name + "\", ";
     std::string end = "}";
@@ -942,11 +950,14 @@ bool response_ready = false;
 std::string response;
 
 void get_http_response(char* http_response, size_t response_len) {
+    printf_enc("starting\n");
     response = copyString(http_response, response_len);
     response_ready = true;
+    printf_enc("set response_ready\n");
 }
 
 void js_get_http_response(CScriptVar *v, void* userdata) {
+    //printf_enc("%d\n", response_ready);
     if(response_ready == true) {
         v->getReturnVar()->setString(response);
         response_ready = false;
@@ -979,7 +990,7 @@ sgx_status_t run_js(char* code, size_t len){
     char tmp[len];
     memcpy(tmp, code, len);
     std::string enc_code = std::string(tmp);
-    enc_code = str_forms + enc_code;
+    //enc_code = str_forms + enc_code;
     printf_enc("\n%s\n", enc_code.c_str());
     std::string res;
     CTinyJS *js = new CTinyJS();
@@ -995,11 +1006,12 @@ sgx_status_t run_js(char* code, size_t len){
         //js->execute("print_t()");
         //js->execute("var lets_quit = 0; function quit() { lets_quit = 1; }");
         // js->execute("print(\n\"Interactive mode... Type quit(); to exit, or print(...); to print something, or dump() to dump the symbol table!\");");
-        res = js->evaluate(enc_code);
+        js->execute(enc_code);
     } catch (CScriptException *e) {
         printf_enc("ERROR: %s\n", e->text.c_str());
         return SGX_ERROR_UNEXPECTED;
     }
+    res = js->evaluate("result");
     printf_enc("testing inside: %s\n", res.c_str());
     memcpy(code, res.c_str(), res.length()+1);
     // printf_enc("testing: %s", res);
