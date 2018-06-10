@@ -95,7 +95,7 @@ uint8_t* attestation_msg_samples[] =
 
 using namespace std;
 
-KeyboardDriver KB("/dev/ttyACM0", "/dev/ttyACM1");
+KeyboardDriver KB("keyboard_test", "");
 ofstream myfile;
 
 uint8_t convert(char *target){
@@ -119,14 +119,7 @@ void ocall_print_string(const char *str)
     /* Proxy/Bridge will check the length and null-terminate
      * the input string to prevent buffer overflow.
      */
-    printf("%s", str);
-    //myfile << str << endl;;
-}
-
-sgx_status_t enc_make_http_request(const char* method, const char* url, 
-                            const char* headers, const char* request_data, int* ret_code) {
-    //TODO
-    return SGX_SUCCESS;
+    myfile << str << endl;;
 }
 
 
@@ -422,34 +415,29 @@ bool parseMessage(string message) {
 void listenForKeyboard() {
     myfile << "CREATED THREAD" << endl;
     myfile.flush();
-    BluetoothChannel connection;
+    /*BluetoothChannel connection;
     if (connection.channel_open() < 0) {
         myfile << "FAILED BT CONNECT" << endl;
         return;
-    }
+    }*/
     uint8_t keyboardBuff[58] = {0};
     while(true) {
         unique_lock<mutex> lk(keyboard_mutex);
         cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
-
-        
-        uint8_t outBuff[524288];
+        /*uint8_t outBuff[524288];
         uint32_t out_len;
-        myfile << "MAKE DISPLAY ECALL" << endl;
-        myfile << "DISPLAY ECALL FOR FORM " << focusInput.first.c_str() << endl;
         create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
-        myfile << "DISPLAY ECALL RETURNED" << endl;
         if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
-            myfile << "FAILED BT SEND" << endl;
-        }
-        myfile << "KEYB: trying to get encrypted input" << endl;
+            myfile << "DISPLAY: BT FAILED TO SEND" << endl;
+        }*/
+        //myfile << "KEYB: trying to get encrypted input" << endl;
         int enc_bytes = KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
         if (enc_bytes <= 0) {
             myfile << "TIMEOUT on encrypted input" << endl;
         }
         else
         {
-            myfile << "got encrypted input" << endl;
+            //myfile << "got encrypted input" << endl;
             uint8_t bytebuff[29];
             hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
             sgx_status_t ret;
@@ -458,10 +446,10 @@ void listenForKeyboard() {
             get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
         }
     }
-    uint32_t out_len;
+    /*uint32_t out_len;
     uint8_t outBuff[524288];
     create_remove_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str());
-    connection.channel_close();
+    connection.channel_close();*/
 }
 
 
@@ -1040,34 +1028,6 @@ if(argc > 2)
 
     freopen( "stderr.log", "w", stderr );
 
-    //testing
-    uint8_t sig[] = {123,75,110,242,57,192,50,125,54,78,72,61,251,226,117,175,25,116,131,128,179,149,125,117,25,187,53,153,239,250,160,119,72,104,113,241,185,125,229,194,73,69,235,48,97,5,4,138,86,49,158,86,236,193,140,84,63,19,3,33,182,200,254,14};
-    size_t sig_size = sizeof(sig); 
-    sgx_status_t re;
-    add_form(enclave_id, &re, "loginform", 10, "a", 2, 0, 0);
-    add_input(enclave_id, &re, "loginform", 10, "username", 9, NULL, 0, 0, 0, 0, 0, 0);
-    add_input(enclave_id, &re, "loginform", 10, "password", 9, (uint8_t*)&sig, sig_size, 1, 0, 0, 0, 0); 
-    printf("added input %d\n", re);
-
-    uint32_t len; 
-    form_len(enclave_id, &len, "loginform");
-    uint8_t form_buf[(len*4)] = {0};
-    uint8_t mac[16] = {0};
-    submit_form(enclave_id, &re, "loginform", &form_buf[0], len, &mac[0]);
-    printf("size %d\n", len);
-    for(int i = 0; i < len; i++) {
-        printf("%c", (char)form_buf[i]);
-    }
-    printf("\n");
-    for(int i = 0; i < 16; i++) {
-        printf("%d", mac[i]);
-    }
-    printf("\n");
-
-    test_decryption(enclave_id, &re, &form_buf[0], len, &mac[0]);
-    
-
-    //end testing
 
     std::string oneLine = "";
     thread test_thread(listenForKeyboard);
