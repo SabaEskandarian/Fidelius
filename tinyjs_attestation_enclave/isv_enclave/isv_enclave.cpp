@@ -951,11 +951,10 @@ void get_http_response(char* http_response, size_t response_len) {
 
 void js_get_http_response(CScriptVar *v, void* userdata) {
     if(response_ready == true) {
-        CScriptVar r = CScriptVar(response);
-        v->setReturnVar(&r);
+        v->getReturnVar()->setString(response);
         response_ready = false;
     } else {
-        v->setReturnVar(false);
+        v->getReturnVar()->setUndefined();
     }
 }
 
