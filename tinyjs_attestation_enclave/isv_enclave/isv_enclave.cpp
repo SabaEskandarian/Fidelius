@@ -916,7 +916,7 @@ void js_make_http_request(CScriptVar *v, void* userdata) {
     uint8_t encr_val[len_val] = {0};
     uint8_t aes_gcm_iv[12] = {0};
     uint8_t p_gcm_mac[16] = {0};
-    sgx_status_t ret = sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_tag_t *) (&g_secret),
+    sgx_status_t ret = sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_key_t *) (&g_secret),
             (const uint8_t*) &request_data[0],
             len_val,  
             &encr_val[0],
@@ -930,15 +930,15 @@ void js_make_http_request(CScriptVar *v, void* userdata) {
         return;    
     }
     request_data = std::string((char *) &encr_val[0]);
-    printf_enc(request_data.c_str());
+    printf_enc("%s\n", request_data.c_str());
     int ret_code = 0;
-    enc_make_http_request(&ret, method.c_str(), url.c_str(), headers.c_str(), request_data.c_str(), &ret_code);
+    enc_make_http_request(&ret, method.c_str(), url.c_str(), headers.c_str(), request_data.c_str(), &p_gcm_mac[0], &ret_code);
     if(ret != SGX_SUCCESS) {
         printf_enc("Error: request failed");
         return; 
     }
-    CScriptVar sv = CScriptVar(ret_code);
-    v->setReturnVar(&sv);
+    printf_enc("return code: %d\n", ret_code);
+    v->getReturnVar()->setInt(ret_code);
 }
 
 bool response_ready = false;
@@ -950,12 +950,12 @@ void get_http_response(char* http_response, size_t response_len) {
 }
 
 void js_get_http_response(CScriptVar *v, void* userdata) {
-    while(true) {
-        if(response_ready == true) {
-            CScriptVar r = CScriptVar(response);
-            v->setReturnVar(&r);
-            response_ready = false;
-        }
+    if(response_ready == true) {
+        CScriptVar r = CScriptVar(response);
+        v->setReturnVar(&r);
+        response_ready = false;
+    } else {
+        v->setReturnVar(false);
     }
 }
 
@@ -988,11 +988,11 @@ sgx_status_t run_js(char* code, size_t len){
     std::string res;
     CTinyJS *js = new CTinyJS();
     registerFunctions(js);
-    js->addNative("function print(text)", &js_print, 0);
-    js->addNative("function dump()", &js_dump, js);
-    js->addNative("function update_form(formName, inputName, val)", &js_update_form, js);
-    js->addNative("function js_make_http_request(method, url, headers, postData)", &js_make_http_request, js);
-    js->addNative("function js_get_http_response()", &js_get_http_response, js);
+    js->addNative("function print(text)", js_print, 0);
+    js->addNative("function dump()", js_dump, js);
+    js->addNative("function update_form(formName, inputName, val)", js_update_form, js);
+    js->addNative("function js_make_http_request(method, url, headers, postData)", js_make_http_request, js);
+    js->addNative("function js_get_http_response()", js_get_http_response, js);
     try {
         //js->execute("print_t()");
         //t = 6;
@@ -1004,7 +1004,7 @@ sgx_status_t run_js(char* code, size_t len){
         printf_enc("ERROR: %s\n", e->text.c_str());
         return SGX_ERROR_UNEXPECTED;
     }
-    printf_enc("testing inside: %s\n", res);
+    printf_enc("testing inside: %s\n", res.c_str());
     memcpy(code, res.c_str(), res.length()+1);
     // printf_enc("testing: %s", res);
   std::map<std::string, form>::iterator it;
