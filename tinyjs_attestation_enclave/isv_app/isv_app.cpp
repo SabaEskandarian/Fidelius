@@ -120,25 +120,22 @@ void hexStrtoBytes(char *char_stream, int stream_len, uint8_t *byte_array){
 
 void sendMessage(string message) {
 
-    string outMsg = "{\"text\":\"This is a response message sdl;kfjs ;dlkfj sdlka\"}";
+    
     //myfile << "Message with length: " << outMsg << endl;
-    unsigned int len = outMsg.length();
+    unsigned int len = message.length();
 
-    myfile << len << endl;
     //std::cout.setf(std::ios_base::unitbuf);
     //cout.write((char *)&outLen, sizeof(unsigned int));
     //char *bOutLen = reinterpret_cast<char *>(&outLen);
     //cout << outLen;
-    myfile << "About to cout this: " << outMsg << endl;
 
     //cout << outMsg;
     cout  << char((len>>0) & 0xFF)
     << char((len>>8) & 0xFF)
     << char((len>>16) & 0xFF)
     << char((len>>24) & 0xFF)
-    << outMsg << endl;
+    << message << endl;
 
-    myfile << "Just wrote: " << outMsg << endl;
     // Collect the length of the message
     /*unsigned int len = message.length();
     // Now we can output our message
@@ -299,6 +296,7 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 #define INITIALIZE_ENCLAVE 2
 #define ADD_FORM 3
 #define ADD_SCRIPT 4
+#define FORM_SUBMIT 5
 #define TERMINATE_ENCLAVE 6
 #define SUBMIT_HTTP_REQ 7
 #define SHUTDOWN_EM 8
@@ -324,9 +322,7 @@ void handleOnBlur(string formName, string inputName, double mouseX, double mouse
     KB.changeMode(&b, 1);
     sgx_status_t ret;
     onBlur(enclave_id, &ret); //ECALL
-    sendMessage("{\"msg\" : \"Well Hello There!\"}");
     cv.notify_all();
-    myfile << "notified all" << endl;
 }
 
 
@@ -411,6 +407,26 @@ void submitHttpReq(string request) {
 	if (DEBUG_MODE) myfile << "sending HTTP request: " << request << endl;
 }
 
+void handleFormSubmission(string formName) {
+	sgx_status_t re;
+	uint32_t len; 
+    form_len(enclave_id, &len, formName.c_str());
+    uint8_t form_buf[(len*4)] = {0};
+    uint8_t mac[16] = {0};
+
+    myfile << "submitting form now!" << endl;
+	submit_form(enclave_id, &re, formName.c_str(), &form_buf[0], len, &mac[0]);
+	myfile << form_buf << endl;
+
+	string resultString = "{\"msg\" : \"";
+	resultString += std::string((char *)form_buf);
+	resultString += "\"}";
+
+	myfile << "Result: " << resultString << endl;;
+
+	sendMessage(resultString);
+}
+
 void parseScript(string message) {
 	vector<string> argv;
 	string sigsAndScripts = message.substr(3, message.length()-3); //skips over 8\n
@@ -472,6 +488,9 @@ bool parseMessage(string message) {
       break;
       case ADD_FORM:
       addForm(argv);
+      break;
+      case FORM_SUBMIT:
+      handleFormSubmission(argv[1]);
       break;
       case ADD_SCRIPT:
       addScript(argv[1], argv[2]);
@@ -1116,7 +1135,7 @@ if(argc > 2)
     form_len(enclave_id, &len, "loginform");
     uint8_t form_buf[(len*4)] = {0};
     uint8_t mac[16] = {0};
-    submit_form(enclave_id, &re, "loginform", &form_buf[0], len, &mac[0]);
+    
     //printf("size %d\n", len);
     for(int i = 0; i < len; i++) {
         //printf("%c", (char)form_buf[i]);
@@ -1128,13 +1147,18 @@ if(argc > 2)
     //printf("\n");
 
     test_decryption(enclave_id, &re, &form_buf[0], len, &mac[0]);
-    //std::string code = "print('starting'); update_form('loginform', 'password', 'pwd');var x=js_make_http_request('b', 'a', 'c', 'd');\n if(1) {print(x);};\n for (var i=1;i<10;i++){print(i);}\n var result=2;";
     std::string code = "var test = {\"b\":\"c\"}; var s = JSON.stringify(test, undefined); var t = eval(s); print(t['b']);";
-    printf("init enclave_id: %d\n", enclave_id);
+    //printf("init enclave_id: %d\n", enclave_id);
+    //std::string code = "print('starting'); update_form('loginform', 'password', 'pwd');var x=js_make_http_request('b', 'a', 'c', 'd');\n if(1) {print(x);};\n for (var i=1;i<10;i++){print(i);}\n var result=2;";
+    //std::string code = "{ var a = 4; var b = 1; while (a>0) { b = b * 2; a = a - 1; } var c = 5; }";
+    //std::string code = "x = 1; var y = 2;";
+    //printf("init enclave_id: %d\n", enclave_id);
     int t;
     print_debug(enclave_id, &t);
-    printf("testing %d\n", t);
+    //printf("testing %d\n", t);
+    //printf("testing %d\n", t);
     run_js(enclave_id, &re, (char*) &code[0], code.length()+1, (uint8_t*)&sig, sig_size);//should fail bc we have not generated a signiture 
+
 
     //end testing
 
