@@ -136,6 +136,15 @@ typedef struct ms_test_decryption_t {
 	uint8_t* ms_gcm_mac;
 } ms_test_decryption_t;
 
+typedef struct ms_get_http_response_t {
+	char* ms_response;
+	size_t ms_len;
+} ms_get_http_response_t;
+
+typedef struct ms_print_debug_t {
+	int ms_retval;
+} ms_print_debug_t;
+
 typedef struct ms_sgx_ra_get_ga_t {
 	sgx_status_t ms_retval;
 	sgx_ra_context_t ms_context;
@@ -184,6 +193,7 @@ typedef struct ms_enc_make_http_request_t {
 	char* ms_url;
 	char* ms_headers;
 	char* ms_request_data;
+	uint8_t* ms_p_mac;
 	int* ms_ret_code;
 } ms_enc_make_http_request_t;
 
@@ -999,6 +1009,62 @@ err:
 	return status;
 }
 
+static sgx_status_t SGX_CDECL sgx_get_http_response(void* pms)
+{
+	CHECK_REF_POINTER(pms, sizeof(ms_get_http_response_t));
+	//
+	// fence after pointer checks
+	//
+	sgx_lfence();
+	ms_get_http_response_t* ms = SGX_CAST(ms_get_http_response_t*, pms);
+	sgx_status_t status = SGX_SUCCESS;
+	char* _tmp_response = ms->ms_response;
+	size_t _tmp_len = ms->ms_len;
+	size_t _len_response = _tmp_len;
+	char* _in_response = NULL;
+
+	CHECK_UNIQUE_POINTER(_tmp_response, _len_response);
+
+	//
+	// fence after pointer checks
+	//
+	sgx_lfence();
+
+	if (_tmp_response != NULL && _len_response != 0) {
+		_in_response = (char*)malloc(_len_response);
+		if (_in_response == NULL) {
+			status = SGX_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+
+		memcpy(_in_response, _tmp_response, _len_response);
+	}
+
+	get_http_response(_in_response, _tmp_len);
+err:
+	if (_in_response) free(_in_response);
+
+	return status;
+}
+
+static sgx_status_t SGX_CDECL sgx_print_debug(void* pms)
+{
+	CHECK_REF_POINTER(pms, sizeof(ms_print_debug_t));
+	//
+	// fence after pointer checks
+	//
+	sgx_lfence();
+	ms_print_debug_t* ms = SGX_CAST(ms_print_debug_t*, pms);
+	sgx_status_t status = SGX_SUCCESS;
+
+
+
+	ms->ms_retval = print_debug();
+
+
+	return status;
+}
+
 static sgx_status_t SGX_CDECL sgx_sgx_ra_get_ga(void* pms)
 {
 	CHECK_REF_POINTER(pms, sizeof(ms_sgx_ra_get_ga_t));
@@ -1311,9 +1377,9 @@ err:
 
 SGX_EXTERNC const struct {
 	size_t nr_ecall;
-	struct {void* ecall_addr; uint8_t is_priv;} ecall_table[20];
+	struct {void* ecall_addr; uint8_t is_priv;} ecall_table[22];
 } g_ecall_table = {
-	20,
+	22,
 	{
 		{(void*)(uintptr_t)sgx_enclave_init_ra, 0},
 		{(void*)(uintptr_t)sgx_enclave_ra_close, 0},
@@ -1330,6 +1396,8 @@ SGX_EXTERNC const struct {
 		{(void*)(uintptr_t)sgx_gcm_decrypt, 0},
 		{(void*)(uintptr_t)sgx_get_keyboard_chars, 0},
 		{(void*)(uintptr_t)sgx_test_decryption, 0},
+		{(void*)(uintptr_t)sgx_get_http_response, 0},
+		{(void*)(uintptr_t)sgx_print_debug, 0},
 		{(void*)(uintptr_t)sgx_sgx_ra_get_ga, 0},
 		{(void*)(uintptr_t)sgx_sgx_ra_proc_msg2_trusted, 0},
 		{(void*)(uintptr_t)sgx_sgx_ra_get_msg3_trusted, 0},
@@ -1340,21 +1408,21 @@ SGX_EXTERNC const struct {
 
 SGX_EXTERNC const struct {
 	size_t nr_ocall;
-	uint8_t entry_table[11][20];
+	uint8_t entry_table[11][22];
 } g_dyn_entry_table = {
 	11,
 	{
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
 	}
 };
 
@@ -1396,24 +1464,27 @@ sgx_status_t SGX_CDECL ocall_print_string(const char* str)
 	return status;
 }
 
-sgx_status_t SGX_CDECL enc_make_http_request(sgx_status_t* retval, const char* method, const char* url, const char* headers, const char* request_data, int* ret_code)
+sgx_status_t SGX_CDECL enc_make_http_request(sgx_status_t* retval, const char* method, const char* url, const char* headers, const char* request_data, uint8_t* p_mac, int* ret_code)
 {
 	sgx_status_t status = SGX_SUCCESS;
 	size_t _len_method = method ? strlen(method) + 1 : 0;
 	size_t _len_url = url ? strlen(url) + 1 : 0;
 	size_t _len_headers = headers ? strlen(headers) + 1 : 0;
 	size_t _len_request_data = request_data ? strlen(request_data) + 1 : 0;
+	size_t _len_p_mac = 16 * sizeof(*p_mac);
 	size_t _len_ret_code = sizeof(*ret_code);
 
 	ms_enc_make_http_request_t* ms = NULL;
 	size_t ocalloc_size = sizeof(ms_enc_make_http_request_t);
 	void *__tmp = NULL;
 
+	void *__tmp_p_mac = NULL;
 	void *__tmp_ret_code = NULL;
 	ocalloc_size += (method != NULL && sgx_is_within_enclave(method, _len_method)) ? _len_method : 0;
 	ocalloc_size += (url != NULL && sgx_is_within_enclave(url, _len_url)) ? _len_url : 0;
 	ocalloc_size += (headers != NULL && sgx_is_within_enclave(headers, _len_headers)) ? _len_headers : 0;
 	ocalloc_size += (request_data != NULL && sgx_is_within_enclave(request_data, _len_request_data)) ? _len_request_data : 0;
+	ocalloc_size += (p_mac != NULL && sgx_is_within_enclave(p_mac, _len_p_mac)) ? _len_p_mac : 0;
 	ocalloc_size += (ret_code != NULL && sgx_is_within_enclave(ret_code, _len_ret_code)) ? _len_ret_code : 0;
 
 	__tmp = sgx_ocalloc(ocalloc_size);
@@ -1468,6 +1539,18 @@ sgx_status_t SGX_CDECL enc_make_http_request(sgx_status_t* retval, const char* m
 		return SGX_ERROR_INVALID_PARAMETER;
 	}
 	
+	if (p_mac != NULL && sgx_is_within_enclave(p_mac, _len_p_mac)) {
+		ms->ms_p_mac = (uint8_t*)__tmp;
+		__tmp_p_mac = __tmp;
+		memset(__tmp_p_mac, 0, _len_p_mac);
+		__tmp = (void *)((size_t)__tmp + _len_p_mac);
+	} else if (p_mac == NULL) {
+		ms->ms_p_mac = NULL;
+	} else {
+		sgx_ocfree();
+		return SGX_ERROR_INVALID_PARAMETER;
+	}
+	
 	if (ret_code != NULL && sgx_is_within_enclave(ret_code, _len_ret_code)) {
 		ms->ms_ret_code = (int*)__tmp;
 		__tmp_ret_code = __tmp;
@@ -1483,6 +1566,7 @@ sgx_status_t SGX_CDECL enc_make_http_request(sgx_status_t* retval, const char* m
 	status = sgx_ocall(1, ms);
 
 	if (retval) *retval = ms->ms_retval;
+	if (p_mac) memcpy((void*)p_mac, __tmp_p_mac, _len_p_mac);
 	if (ret_code) memcpy((void*)ret_code, __tmp_ret_code, _len_ret_code);
 
 	sgx_ocfree();
