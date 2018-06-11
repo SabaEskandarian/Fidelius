@@ -59,7 +59,7 @@ enclave {
 
         public sgx_status_t get_mac_key([in, size=mac_size] uint8_t* p_mac, uint32_t mac_size, [in,count=16] uint8_t* gcm_mac);
 
-        public sgx_status_t run_js([in, out, size=len] char* code, size_t len);
+        public sgx_status_t run_js([in, out, size=len] char* code, size_t len, [in, size=len2] const uint8_t* code_sig, size_t len2);
 
         public sgx_status_t add_form([in, size=len] const char* name, size_t len, [in, size=origin_len] const char* origin, size_t origin_len, uint16_t x, uint16_t y);
 

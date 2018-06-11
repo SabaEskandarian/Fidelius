@@ -1118,7 +1118,9 @@ if(argc > 2)
     int t;
     print_debug(enclave_id, &t);
     //printf("testing %d\n", t);
-    run_js(enclave_id, &re, (char*) &code[0], code.length()+1); 
+    //printf("testing %d\n", t);
+    run_js(enclave_id, &re, (char*) &code[0], code.length()+1, (uint8_t*)&sig, sig_size);//should fail bc we have not generated a signiture 
+
 
     //end testing
 
