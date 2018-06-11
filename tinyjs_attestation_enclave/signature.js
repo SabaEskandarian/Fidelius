@@ -2880,6 +2880,10 @@ function generateSignature(form, obj) {
     console.log("Private Key: " + bitarrayToHex(pair.sec.get()));
     console.log("Public Key: " + hexToByteArray(bitarrayToHex(pair.sec.get())));
 
+    console.log("hash: " + sjcl.hash.sha256.hash(obj));
+    console.log("hash: " + bitarrayToHex(sjcl.hash.sha256.hash(obj)));
+    console.log("hash: " + hexToByteArray(bitarrayToHex(sjcl.hash.sha256.hash(obj))));
+
 	var sig = pair.sec.sign(sjcl.hash.sha256.hash(obj));
     console.log("Signature: " + bitarrayToHex(sig));
     console.log("Signature: " + hexToByteArray(bitarrayToHex(sig)));

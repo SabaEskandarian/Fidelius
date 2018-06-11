@@ -57,7 +57,7 @@ int BluetoothChannel::channel_open()
     if (hci_read_remote_name(sock, &(ii+i)->bdaddr, sizeof(rsp_name), rsp_name, 0) < 0)
       strcpy(rsp_name, "[unknown]");
 
-    printf("%s  %s\n", rsp_addr, rsp_name);
+   //printf("%s  %s\n", rsp_addr, rsp_name);
 
     if (strcmp(rsp_name, target) == 0)
     {
@@ -67,23 +67,23 @@ int BluetoothChannel::channel_open()
       addr.rc_family = AF_BLUETOOTH;
       addr.rc_channel = (uint8_t) 1;
       str2ba(rsp_addr, &addr.rc_bdaddr );
-      printf("Opening RFCOMM socket \n");
+     //printf("Opening RFCOMM socket \n");
       if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)))
         return -1;
       return 0;
     }
   }
-  printf("Could not find the raspberry pi\n");
+ //printf("Could not find the raspberry pi\n");
   return 0;
 #else
   sock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
   addr.rc_family = AF_BLUETOOTH;
   addr.rc_channel = (uint8_t) 1;
   str2ba(PI_ADDR, &addr.rc_bdaddr );
-  printf("Opening RFCOMM socket \n");
+ //printf("Opening RFCOMM socket \n");
   if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)))
   {
-    printf("Could not open socket\n");
+   //printf("Could not open socket\n");
     return -1;
   }
   return 0;
@@ -97,22 +97,22 @@ int BluetoothChannel::channel_open()
 int BluetoothChannel::channel_send(char * buffer, int len)
 {
   int resp = write(sock, buffer, len);
-  printf("Exp send len: %d\n", len);
-  printf("Actual send len: %d\n", resp);
+ //printf("Exp send len: %d\n", len);
+ //printf("Actual send len: %d\n", resp);
   if (resp == -1)
   {
-    printf("Reopenning connection.\n");
+   //printf("Reopenning connection.\n");
     if (channel_open() == -1)
     {
-      printf("Failed reopenning connection.\n");
+     //printf("Failed reopenning connection.\n");
       return -1;
     }
     else
     {
-      printf("Reopened connection.\n");
+     //printf("Reopened connection.\n");
       int resp = write(sock, buffer, len);
-      printf("Exp send len: %d\n", len);
-      printf("Actual send len: %d\n", resp);
+     //printf("Exp send len: %d\n", len);
+     //printf("Actual send len: %d\n", resp);
       return resp;
     }
   }

@@ -273,9 +273,9 @@ function main() {
 	if (scriptString != "") JSport.postMessage(scriptString);
 
 	//Redirects to file
-	if (window.confirm("Click \"OK\" to view to parsed HTML info.")) {
+	/*if (window.confirm("Click \"OK\" to view to parsed HTML info.")) {
 	window.location.href = file;
-	}
+	}*/
 }
 
 main();
