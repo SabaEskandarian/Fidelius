@@ -665,7 +665,7 @@ sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
 	//
 	//printf_enc(" sgx hash size: %d\n", (uint32_t) sizeof(sgx_sha256_hash_t));
     sgx_ec256_signature_t sig;
-    ret = sgx_ecdsa_sign((uint8_t*) &hash,(uint32_t) sizeof(sgx_sha256_hash_t), &test_priv,&sig,ecc_handle);
+    //ret = sgx_ecdsa_sign((uint8_t*) &hash,(uint32_t) sizeof(sgx_sha256_hash_t), &test_priv,&sig,ecc_handle);
 	
     //printf_enc(" sgx signature size: %d\n", (uint32_t) sizeof(sgx_ec256_signature_t));
     /*for(int i = 0; i < sizeof(sgx_ec256_signature_t); i++) {
@@ -972,7 +972,11 @@ void js_dump(CScriptVar *v, void *userdata) {
     js->root->trace(">  ");
 }
 
-sgx_status_t run_js(char* code, size_t len){
+sgx_status_t run_js(char* code, size_t len, const uint8_t *p_sig_code, size_t len2){
+    if(SGX_SUCCESS != validate((uint8_t*) code, (uint32_t) len, (sgx_ec256_signature_t*) p_sig_code)) {        
+        return SGX_ERROR_INVALID_PARAMETER;
+    }
+
     std::string str_forms = "";
     for(std::map<std::string, form>::iterator it = forms.begin();
     it != forms.end(); ++it)
