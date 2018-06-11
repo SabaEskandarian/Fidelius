@@ -39,7 +39,7 @@ enclave {
     untrusted {
         void ocall_print_string([in, string] const char *str);
 
-        sgx_status_t enc_make_http_request([in, string] const char* method, [in, string] const char* url, [in, string] const char* headers, [in, string] const char* request_data, [out] int* ret_code);
+        sgx_status_t enc_make_http_request([in, string] const char* method, [in, string] const char* url, [in, string] const char* headers, [in, string] const char* request_data, [out, count=16] uint8_t* p_mac, [out] int* ret_code);
 
     };
 
@@ -79,6 +79,9 @@ enclave {
 
         public sgx_status_t test_decryption([in,size=form_size] uint8_t* form, uint32_t form_size, [in,count=16] uint8_t* gcm_mac);
 
+        public void get_http_response([in, size=len] char* response, size_t len);
+
+        public int print_debug();
     };
 
 };

@@ -84,6 +84,8 @@
 
 #define ENCLAVE_PATH "isv_enclave.signed.so"
 
+sgx_enclave_id_t enclave_id;
+
 double SCALE_X = 1920.0/1280;
 double SCALE_Y = 1080.0/720;
 
@@ -155,9 +157,12 @@ void ocall_print_string(const char *str)
 }
 
 sgx_status_t enc_make_http_request(const char* method, const char* url, 
-                            const char* headers, const char* request_data, int* ret_code) {
+                            const char* headers, const char* request_data, 
+                            uint8_t* p_mac, int* ret_code) {
     //TODO
     *ret_code = 1;
+    std::string response = "reponse";
+    //TODO: INTERACT WITH BROWSER
     return SGX_SUCCESS;
 }
 
@@ -273,7 +278,6 @@ bool runningManager = true;
 pair<string, string> focusInput;
 condition_variable_any cv;
 mutex keyboard_mutex;
-sgx_enclave_id_t enclave_id;
 
 
 void handleOnBlur(string formName, string inputName, double mouseX, double mouseY) {
@@ -419,7 +423,7 @@ bool parseMessage(string message) {
       return true;
   }
 
-
+  //TODO: ADD CASE FOR HANDELING HTTP RESPONSE
   switch(command) {
       case ON_BLUR:
       handleOnBlur(argv[1], argv[2], stod(argv[3], NULL), stod(argv[4], NULL));
@@ -1088,9 +1092,14 @@ if(argc > 2)
     //printf("\n");
 
     test_decryption(enclave_id, &re, &form_buf[0], len, &mac[0]);
-    std::string code = "print('starting'); b = 'test'; update_form(\"loginform\", 'password', 'pwd');";
-    //" x = js_make_http_request(b, 'a', \"c\", \"d\"); print(x); print('requested)';";
-    run_js(enclave_id, &re, (char*) &code[0], code.length()+1);
+    std::string code = "print('starting'); update_form('loginform', 'password', 'pwd');var x=js_make_http_request('b', 'a', 'c', 'd');\n if(1) {print(x);};\n for (var i=1;i<10;i++){print(i);}\n var result=2;";
+    //std::string code = "{ var a = 4; var b = 1; while (a>0) { b = b * 2; a = a - 1; } var c = 5; }";
+    //std::string code = "x = 1; var y = 2;";
+    printf("init enclave_id: %d\n", enclave_id);
+    int t;
+    print_debug(enclave_id, &t);
+    printf("testing %d\n", t);
+    run_js(enclave_id, &re, (char*) &code[0], code.length()+1); 
 
     //end testing
 

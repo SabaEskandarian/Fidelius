@@ -203,6 +203,16 @@ void show_allocated() {
 #endif
 
 // ----------------------------------------------------------------------------------- Utils
+void printf_enc2(const char *fmt, ...)
+{
+    char buf[BUFSIZ] = {'\0'};
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, BUFSIZ, fmt, ap);
+    va_end(ap);
+    ocall_print_string(buf);
+}
+
 bool isWhitespace(char ch) {
     return (ch==' ') || (ch=='\t') || (ch=='\n') || (ch=='\r');
 }
@@ -1330,7 +1340,8 @@ void CTinyJS::execute(const string &code) {
     scopes.push_back(root);
     try {
         bool execute = true;
-        while (l->tk) statement(execute);
+        printf_enc2("executing\n");
+        while (l->tk) {statement(execute);}
     } catch (CScriptException *e) {
         //ostringstream msg;
         string msg;
@@ -2039,7 +2050,7 @@ void CTinyJS::statement(bool &execute) {
         CScriptLex *whileBody = l->getSubLex(whileBodyStart);
         CScriptLex *oldLex = l;
         int loopCount = TINYJS_LOOP_MAX_ITERATIONS;
-        while (loopCond && loopCount-->0) {
+        while (loopCond) {
             whileCond->reset();
             l = whileCond;
             cond = base(execute);
@@ -2055,11 +2066,11 @@ void CTinyJS::statement(bool &execute) {
         delete whileCond;
         delete whileBody;
 
-        if (loopCount<=0) {
-            root->trace();
-            TRACE("WHILE Loop exceeded %d iterations at %s\n", TINYJS_LOOP_MAX_ITERATIONS, l->getPosition().c_str());
-            throw new CScriptException("LOOP_ERROR");
-        }
+        // if (loopCount<=0) {
+        //     root->trace();
+        //     TRACE("WHILE Loop exceeded %d iterations at %s\n", TINYJS_LOOP_MAX_ITERATIONS, l->getPosition().c_str());
+        //     throw new CScriptException("LOOP_ERROR");
+        // }
     } else if (l->tk==LEX_R_FOR) {
         l->match(LEX_R_FOR);
         l->match('(');
@@ -2086,7 +2097,7 @@ void CTinyJS::statement(bool &execute) {
             CLEAN(base(execute));
         }
         int loopCount = TINYJS_LOOP_MAX_ITERATIONS;
-        while (execute && loopCond && loopCount-->0) {
+        while (execute && loopCond) {
             forCond->reset();
             l = forCond;
             cond = base(execute);
@@ -2107,11 +2118,11 @@ void CTinyJS::statement(bool &execute) {
         delete forCond;
         delete forIter;
         delete forBody;
-        if (loopCount<=0) {
-            root->trace();
-            TRACE("FOR Loop exceeded %d iterations at %s\n", TINYJS_LOOP_MAX_ITERATIONS, l->getPosition().c_str());
-            throw new CScriptException("LOOP_ERROR");
-        }
+        // if (loopCount<=0) {
+        //     root->trace();
+        //     TRACE("FOR Loop exceeded %d iterations at %s\n", TINYJS_LOOP_MAX_ITERATIONS, l->getPosition().c_str());
+        //     throw new CScriptException("LOOP_ERROR");
+        // }
     } else if (l->tk==LEX_R_RETURN) {
         l->match(LEX_R_RETURN);
         CScriptVarLink *result = 0;
