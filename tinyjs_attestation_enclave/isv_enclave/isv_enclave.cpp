@@ -41,6 +41,7 @@
 #include "TinyJS.h"
 #include "TinyJS_Functions.h"
 #include "TinyJS_MathFunctions.h"
+#include "sgx_tseal.h"
 
 #include <map>
 #include <stdlib.h>
@@ -966,6 +967,47 @@ void js_get_http_response(CScriptVar *v, void* userdata) {
     }
 }
 
+void js_load_items(CScriptVar *v, void *userdata) {
+    std::string sealed;
+    size_t data_len;
+    ocall_get_file_size(&data_len, (origin + ".txt").c_str());
+    ocall_read_file((origin + ".txt").c_str(), &sealed[0], data_len);
+    uint32_t len = sgx_get_encrypt_txt_len((const sgx_sealed_data_t*) &sealed);
+    char decrypted_text[len];
+    uint32_t mac_len = 0;
+    sgx_status_t ret = sgx_unseal_data(
+        (const sgx_sealed_data_t*) &sealed,
+        NULL,
+        &mac_len,
+        (uint8_t*) &decrypted_text[0],
+        &len 
+    );
+    if(ret != SGX_SUCCESS) {
+        printf_enc("Error: data unsealing failed\n");
+    }
+    v->getReturnVar()->setString(std::string(decrypted_text));
+    return; 
+}
+
+void js_save_items(CScriptVar *v, void *userdata) {
+    std::string data_to_store = v->getParameter("data")->getString();
+    uint32_t len = (uint32_t) data_to_store.length();
+    uint32_t sealed_size = sgx_calc_sealed_data_size(0, len);
+    sgx_sealed_data_t sealed_data[sealed_size]; 
+    sgx_status_t ret = sgx_seal_data(
+        0,
+        NULL,
+        len,
+        (uint8_t*) &data_to_store[0],
+        sealed_size,
+        &sealed_data[0]
+    );
+    if(ret != SGX_SUCCESS) {
+        printf_enc("Error: data sealing failed\n");
+    }
+    ocall_write_file((origin + ".txt").c_str(), (char*)&sealed_data[0]);
+    return;
+}
 
 void js_dump(CScriptVar *v, void *userdata) {
     CTinyJS *js = (CTinyJS*)userdata;
@@ -973,9 +1015,9 @@ void js_dump(CScriptVar *v, void *userdata) {
 }
 
 sgx_status_t run_js(char* code, size_t len, const uint8_t *p_sig_code, size_t len2){
-    if(SGX_SUCCESS != validate((uint8_t*) code, (uint32_t) len, (sgx_ec256_signature_t*) p_sig_code)) {        
-        return SGX_ERROR_INVALID_PARAMETER;
-    }
+    //if(SGX_SUCCESS != validate((uint8_t*) code, (uint32_t) len, (sgx_ec256_signature_t*) p_sig_code)) {        
+    //    return SGX_ERROR_INVALID_PARAMETER;
+    //}
 
     std::string str_forms = "";
     for(std::map<std::string, form>::iterator it = forms.begin();
@@ -994,7 +1036,9 @@ sgx_status_t run_js(char* code, size_t len, const uint8_t *p_sig_code, size_t le
     char tmp[len];
     memcpy(tmp, code, len);
     std::string enc_code = std::string(tmp);
-    //enc_code = str_forms + enc_code;
+    //enc_code += "var str_data = __native_js_load_items(); var data = eval(str_data);";
+    enc_code = str_forms + enc_code;  
+    //enc_code += "str_data = JSON.stringify(data); __native_js_save_items(str_data);";
     printf_enc("\n%s\n", enc_code.c_str());
     std::string res;
     CTinyJS *js = new CTinyJS();
@@ -1004,6 +1048,8 @@ sgx_status_t run_js(char* code, size_t len, const uint8_t *p_sig_code, size_t le
     js->addNative("function update_form(formName, inputName, val)", js_update_form, js);
     js->addNative("function js_make_http_request(method, url, headers, postData)", js_make_http_request, js);
     js->addNative("function js_get_http_response()", js_get_http_response, js);
+    js->addNative("function __native_js_load_items()", js_load_items, js);
+    js->addNative("function __native_js_save_items(data)", js_save_items, js);
     try {
         //js->execute("print_t()");
         //t = 6;

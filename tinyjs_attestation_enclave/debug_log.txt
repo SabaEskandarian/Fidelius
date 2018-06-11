@@ -2,6 +2,8 @@ hello from the enclave manager!
 
 CREATED THREAD
 FAILED BT CONNECT
+<<<<<<< HEAD
+=======
 js length: 232
 !!!add_form ecall FAILED
 ADD FORM with name: loginform signature: bdc0269d7433bdf7728ed7294f94a279ae928fd4f7513e2b7ac95184a314cbf2b72c8f216e66e0edb832becf8df87c86f4fe7b5c516edb74beaa797c6c032
@@ -39,3 +41,4 @@ Result: {"msg" : "xª¼¡ÛÍóžMàƒQ’üÄÍ&94ÛÝ«õø²—OputS¶ªWí”€òæØ…»#Ãtt¬]Y\ÁÉ"
 
 js length: 40
 BLUR on form: loginform input: undefined at: 0, 118.438
+>>>>>>> 4721923c9f6e0ad9db914dfc2e415e7e086ca80a
