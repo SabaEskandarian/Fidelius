@@ -7,14 +7,20 @@ chrome.browserAction.onClicked.addListener(function(tab) {
     chrome.runtime.onConnect.addListener(function(parserPort) {
 	  parserPort.onMessage.addListener(function(msg) {
   	    console.log(msg);
-        parserPort.postMessage(msg);
         nativePort.postMessage(msg);
+        parserPort.postMessage(msg);
+      });
+
+      nativePort.onMessage.addListener(function(msg) {
+    	console.log(msg);
+    	parserPort.postMessage("HELLLLLLOOOO");
+      });
+
+      nativePort.onDisconnect.addListener(function() {
+      	parserPort.postMessage("Disconnected");
       });
 	});
 
-    nativePort.onMessage.addListener(function(nativePort) {
-    	parserPort.postMessage(msg);
-    });
     //chrome.tabs.executeScript(null, {file: "signature.js"});
     //chrome.tabs.executeScript(null, {file: "syntaxChecker.js"});
     chrome.tabs.executeScript(null, {file: "htmlParser.js"});

@@ -1,0 +1,1 @@
+make SGX_MODE=SIM

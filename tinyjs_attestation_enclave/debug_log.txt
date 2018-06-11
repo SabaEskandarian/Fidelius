@@ -2,71 +2,22 @@ hello from the enclave manager!
 
 CREATED THREAD
 FAILED BT CONNECT
+js length: 232
 !!!add_form ecall FAILED
-ADD FORM with name: payment signature: Kg7eVNk&3L
-	ADD INPUT: holder (208,0) 
+ADD FORM with name: loginform signature: bdc0269d7433bdf7728ed7294f94a279ae928fd4f7513e2b7ac95184a314cbf2b72c8f216e66e0edb832becf8df87c86f4fe7b5c516edb74beaa797c6c032
+	ADD INPUT: username (109,0) 
 !!!add_input ecall FAILED
-	ADD INPUT: cc (209,31) 
-!!!add_input ecall FAILED
-	ADD INPUT: cvv (114,91) 
+	ADD INPUT: password (104,31) 
 !!!add_input ecall FAILED
 
 
-FOCUS on form: payment input: holder at: 208.922, 87.6562 width: 253.5 height: 25.5
+js length: 55
+FOCUS on form: loginform input: username at: 109.945, 87.6562 width: 253.5 height: 25.5
 
 
-BLUR on form: payment input: holder at: 139.281, 58.4375
-
-
-FOCUS on form: payment input: cc at: 209.953, 119.156 width: 253.5 height: 25.5
-
-
-BLUR on form: payment input: cc at: 139.969, 79.4375
-
-
-FOCUS on form: payment input: cvv at: 114.211, 179.156 width: 253.5 height: 25.5
-
-
-BLUR on form: payment input: cvv at: 76.1406, 119.438
-
-
-FOCUS on form: payment input: cc at: 209.953, 119.156 width: 253.5 height: 25.5
-
-
-BLUR on form: payment input: cc at: 139.969, 79.4375
-
-
-FOCUS on form: payment input: holder at: 208.922, 87.6562 width: 253.5 height: 25.5
-
-
-BLUR on form: payment input: holder at: 139.281, 58.4375
-
-
-FOCUS on form: payment input: cc at: 209.953, 119.156 width: 253.5 height: 25.5
-
-
-BLUR on form: payment input: cc at: 139.969, 79.4375
-
-
-FOCUS on form: payment input: holder at: 208.922, 87.6562 width: 253.5 height: 25.5
-
-
-BLUR on form: payment input: holder at: 139.281, 58.4375
-
-
-FOCUS on form: payment input: cvv at: 114.211, 179.156 width: 253.5 height: 25.5
-
-
-BLUR on form: payment input: cvv at: 76.1406, 119.438
-
-
-FOCUS on form: payment input: cc at: 209.953, 119.156 width: 253.5 height: 25.5
-
-
-BLUR on form: payment input: cc at: 139.969, 79.4375
-
-
-FOCUS on form: payment input: holder at: 208.922, 87.6562 width: 253.5 height: 25.5
-
-
-SHUTTING DOWN EM
+js length: 46
+BLUR on form: loginform input: username at: 73.2969, 58.4375
+59
+About to cout this: {"text":"This is a response message sdl;kfjs ;dlkfj sdlka"}
+Just wrote: {"text":"This is a response message sdl;kfjs ;dlkfj sdlka"}
+notified all
