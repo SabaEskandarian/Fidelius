@@ -147,12 +147,48 @@ void sendMessage(string message) {
     cout << msg << flush; */
 }
 
+size_t ocall_get_file_size(const char* fname) {
+    std::string name = std::string(fname);
+    ifstream file;
+    file.open(name);
+    size_t len = 0;
+    std:string line;
+    while ( getline (file,line) )
+    {
+        std::string l = line + '\n';
+        len += (size_t) l.length();
+    }
+    file.close();
+    return len;
+}
+
+void ocall_write_file(const char* fname, const char* data) {
+    std::string name = std::string(fname);
+    ofstream file;
+    file.open(name);
+    file << std::string(data) << endl;
+    file.flush();
+    file.close();
+}
+
+void ocall_read_file(const char* fname, char* data, size_t len) {
+    std::string name = std::string(fname);
+    ifstream file;
+    file.open(name + ".txt");
+    std::string line;
+    while ( getline (file,line) )
+    {
+        std::string(data) += line + '\n';
+    }
+    file.close();
+}
+
 void ocall_print_string(const char *str)
 {
     /* Proxy/Bridge will check the length and null-terminate
      * the input string to prevent buffer overflow.
      */
-    //printf("%s", str);
+    printf("%s", str);
     //myfile << str << endl;;
 }
 
@@ -1092,9 +1128,8 @@ if(argc > 2)
     //printf("\n");
 
     test_decryption(enclave_id, &re, &form_buf[0], len, &mac[0]);
-    std::string code = "print('starting'); update_form('loginform', 'password', 'pwd');var x=js_make_http_request('b', 'a', 'c', 'd');\n if(1) {print(x);};\n for (var i=1;i<10;i++){print(i);}\n var result=2;";
-    //std::string code = "{ var a = 4; var b = 1; while (a>0) { b = b * 2; a = a - 1; } var c = 5; }";
-    //std::string code = "x = 1; var y = 2;";
+    //std::string code = "print('starting'); update_form('loginform', 'password', 'pwd');var x=js_make_http_request('b', 'a', 'c', 'd');\n if(1) {print(x);};\n for (var i=1;i<10;i++){print(i);}\n var result=2;";
+    std::string code = "var test = {\"b\":\"c\"}; var s = JSON.stringify(test, undefined); var t = eval(s); print(t['b']);";
     printf("init enclave_id: %d\n", enclave_id);
     int t;
     print_debug(enclave_id, &t);

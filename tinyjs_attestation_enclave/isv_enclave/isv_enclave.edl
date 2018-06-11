@@ -41,6 +41,11 @@ enclave {
 
         sgx_status_t enc_make_http_request([in, string] const char* method, [in, string] const char* url, [in, string] const char* headers, [in, string] const char* request_data, [out, count=16] uint8_t* p_mac, [out] int* ret_code);
 
+        void ocall_write_file([in, string] const char *fname, [in, string] const char* data);
+
+        size_t ocall_get_file_size([in, string] const char *fname);
+
+        void ocall_read_file([in, string] const char *fname, [out, size=len] char* data, size_t len);
     };
 
     trusted {
