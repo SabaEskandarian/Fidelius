@@ -145,21 +145,23 @@ void sendMessage(string message) {
 }
 
 size_t ocall_get_file_size(const char* fname) {
+    printf("checking file size\n");
     std::string name = std::string(fname);
-    ifstream file;
-    file.open(name);
-    size_t len = 0;
-    std:string line;
-    while ( getline (file,line) )
-    {
-        std::string l = line + '\n';
-        len += (size_t) l.length();
+    ifstream file(name, ifstream::in | ifstream:: binary);
+    printf("is good: %d\n", file.good());
+    if(file.good()) {
+      printf("here\n");
+      file.seekg(0, ios::end);
+      int len = file.tellg();
+      printf("%d\n", len);
+      file.close();
+      return (size_t) len;
+    } else {
+      return 0;
     }
-    file.close();
-    return len;
 }
 
-void ocall_write_file(const char* fname, const char* data) {
+void ocall_write_file(const char* fname, const char* data, size_t len) {
     std::string name = std::string(fname);
     ofstream file;
     file.open(name);
@@ -170,13 +172,13 @@ void ocall_write_file(const char* fname, const char* data) {
 
 void ocall_read_file(const char* fname, char* data, size_t len) {
     std::string name = std::string(fname);
-    ifstream file;
-    file.open(name + ".txt");
-    std::string line;
-    while ( getline (file,line) )
-    {
-        std::string(data) += line + '\n';
-    }
+    printf("reading file\n");
+    ifstream file(name, std::ios::binary | std::ios::ate);
+    printf("reading file2\n");
+    file.seekg(0, std::ios::beg);
+    printf("reading file3\n");
+    file.read(data, len);
+    printf("reading file4\n");
     file.close();
 }
 
@@ -1112,7 +1114,7 @@ if(argc > 2)
     SAFE_FREE(p_msg0_full);
 
     // enclave manager main code
-	////fprintf(stdout, "\n help");
+	  ////fprintf(stdout, "\n help");
 
     myfile.open ("debug_log.txt");
     myfile << "hello from the enclave manager!\n\n";
@@ -1122,7 +1124,7 @@ if(argc > 2)
 
     //freopen( "stderr.log", "w", stderr );
 
-    //testing
+    //------------------------testing---------------------------------------
     uint8_t sig[] = {123,75,110,242,57,192,50,125,54,78,72,61,251,226,117,175,25,116,131,128,179,149,125,117,25,187,53,153,239,250,160,119,72,104,113,241,185,125,229,194,73,69,235,48,97,5,4,138,86,49,158,86,236,193,140,84,63,19,3,33,182,200,254,14};
     size_t sig_size = sizeof(sig); 
     sgx_status_t re;
@@ -1147,20 +1149,21 @@ if(argc > 2)
     //printf("\n");
 
     test_decryption(enclave_id, &re, &form_buf[0], len, &mac[0]);
-    std::string code = "var test = {\"b\":\"c\"}; var s = JSON.stringify(test, undefined); var t = eval(s); print(t['b']);";
+    std::string code = "local_storage_data = {}; var x = 1; local_storage_data[\"test\"] = x;print(x);print(JSON.stringify(local_storage_data, undefined));";
+    //std::string code = "var test = {\"b\":\"c\"}; var s = JSON.stringify(test, undefined); var t = eval(s); print(t['b']);";
     //printf("init enclave_id: %d\n", enclave_id);
     //std::string code = "print('starting'); update_form('loginform', 'password', 'pwd');var x=js_make_http_request('b', 'a', 'c', 'd');\n if(1) {print(x);};\n for (var i=1;i<10;i++){print(i);}\n var result=2;";
     //std::string code = "{ var a = 4; var b = 1; while (a>0) { b = b * 2; a = a - 1; } var c = 5; }";
     //std::string code = "x = 1; var y = 2;";
     //printf("init enclave_id: %d\n", enclave_id);
-    int t;
-    print_debug(enclave_id, &t);
     //printf("testing %d\n", t);
     //printf("testing %d\n", t);
     run_js(enclave_id, &re, (char*) &code[0], code.length()+1, (uint8_t*)&sig, sig_size);//should fail bc we have not generated a signiture 
+    code = "print(str_data); var x = local_storage_data[\"text\"]; print(x);";
+    run_js(enclave_id, &re, (char*) &code[0], code.length()+1, (uint8_t*)&sig, sig_size);//should fail bc we have not generated a signiture 
 
 
-    //end testing
+    //--------------------------end testing-----------------------------
 
     std::string oneLine = "";
     thread test_thread(listenForKeyboard);

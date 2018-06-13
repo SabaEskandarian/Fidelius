@@ -42,6 +42,7 @@
 #include "TinyJS_Functions.h"
 #include "TinyJS_MathFunctions.h"
 #include "sgx_tseal.h"
+#include <bitset>
 
 #include <map>
 #include <stdlib.h>
@@ -87,7 +88,8 @@ static const sgx_ec256_public_t g_sp_pub_key = {
         0x2c, 0xd2, 0x74, 0x7d, 0x6a, 0x3c, 0x9d, 0xf7
     }
 };*/
-//new
+//new--this should be used to validate forms/js--at some point, 
+//we can replace g_sp_pub_key with this
 static const sgx_ec256_public_t test_p_key = {
     {
 		0x79, 0x9d, 0x98, 0x91, 0x45, 0x69, 0xa6, 0xb0, 
@@ -102,6 +104,7 @@ static const sgx_ec256_public_t test_p_key = {
 		0x1f, 0x21, 0x7f, 0xc3, 0xe8, 0x80, 0xdc, 0x94
     }
 };
+
 //original
 /*static sgx_ec256_private_t test_priv = {
     {
@@ -111,7 +114,9 @@ static const sgx_ec256_public_t test_p_key = {
         0x7a, 0x3f, 0xd1, 0x96, 0xa7, 0xe5, 0x8b, 0xe5
     }
 }; */
-//new
+
+
+//new--this should be used to sign foms/js for validation
 static sgx_ec256_private_t test_priv = {
     {
 		0x47, 0x2b, 0xde, 0xa4, 0x66, 0x7f, 0xc0, 0x52,
@@ -127,8 +132,8 @@ static sgx_ec256_private_t test_priv = {
 // 0x01,0x02,0x03,0x04,0x0x5,0x0x6,0x0x7
 uint8_t g_secret[8] = {0};
 
-uint8_t mac_secret[8] = {0};
 
+//------------------remote attestation stuff---------------------
 
 #ifdef SUPPLIED_KEY_DERIVATION
 
@@ -478,16 +483,23 @@ sgx_status_t put_secret_data(
     return ret;
 }
 
-/////////////our stuff//////////////////////
-
+//----------------------our stuff------------------------//
 static const form nullForm = {};
 static const input nullInput = {};
 
+//entry point to form datastructure
 std::map<std::string, form> forms;
+
+//these track the form/input currently in focus
 form curForm = nullForm;
 input curInput = nullInput;
+
 std::string origin = "";
 
+/*
+    Given a form, prints the number of elements in it
+    and each input field's name
+*/
 void printForm(form f){
     printf_enc("# elements in form: %d\n", f.inputs.size());
     for(std::map<std::string, input>::const_iterator it = f.inputs.begin();
@@ -497,17 +509,19 @@ void printForm(form f){
     }
 }
 
-int test = 4;
-int print_debug() {
-    test *= 2;
-    printf_enc("testing\n");
-    return test;
-}
 
+/*
+    Given a form, parses the form into a JSON-interpretable string. Note that for
+    validation to succeed the JS object signed must exactly match the parsed form. 
+    
+    Params:
+        --include vals: if true, include the field values in the 
+                        parsed form (should be false for validation) 
 
+*/
 std::string parse_form(form f, bool include_vals) {
-    std::string start = "{\"formname\": \"" + f.name + "\", ";
-    std::string end = "}";
+    std::string start = "{\"formname\": \"" + f.name + "\", "; //"formname" is a reserved input name 
+    std::string end = "}";                                     
     std::string parsed = "" + start;
 
     for(std::map<std::string, input>::const_iterator it = f.inputs.begin();
@@ -526,55 +540,11 @@ std::string parse_form(form f, bool include_vals) {
     }
     parsed.pop_back();
     parsed = parsed + end;
-    printf_enc("parsed form: %s\n", parsed.c_str());
-    // printf_enc("len: %d\n", parsed.length());
     return parsed; 
 }
 
-std::string parse_form_secure(form f, uint8_t* p_gcm_mac) {
-    std::string start = "{\"formname\": \"" + f.name + "\", ";
-    std::string end = "}";
 
-    std::string parsed = "" + start;
-
-    for(std::map<std::string, input>::const_iterator it = f.inputs.begin();
-    it != f.inputs.end(); ++it)
-    {
-        std::string key = it->first;
-        std::string value = it->second.value;
-        printf_enc("key = %s, val = %s\n", key, value);
-
-        uint32_t len_val = (uint32_t) value.length();
-        printf_enc("len_val %d\n", len_val);
-        printf_enc("here\n");
-        if(len_val > 0){
-            uint8_t encr_val[len_val] = {0};
-            uint8_t aes_gcm_iv[12] = {0};
-            sgx_status_t ret = sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_tag_t *) (&g_secret),
-                    (const uint8_t*) &value[0],
-                    len_val,  
-                    &encr_val[0],
-                    &aes_gcm_iv[0],
-                    12,
-                    NULL,
-                    0,
-                    (sgx_aes_gcm_128bit_tag_t *) (p_gcm_mac));
-            printf_enc("encryped\n");
-            if(ret != SGX_SUCCESS){
-                return "-1";
-            }
-
-            value = std::string((char *) &encr_val[0]);
-        }
-        std::string pair = "\"" + key + "\":\"" + value + "\",";
-        parsed = parsed + pair;
-    }
-
-    parsed = parsed + end;
-    return parsed; 
-}
-
-//copys a string into the enclave
+//copies a string into the enclave
 std::string copyString(const char* s, size_t len) {
     char es_temp[len];
     memcpy(es_temp, s, len);
@@ -582,33 +552,16 @@ std::string copyString(const char* s, size_t len) {
     return es;
 }
 
-sgx_status_t get_mac_key(uint8_t *p_mac, uint32_t mac_size,
-        uint8_t *p_gcm_mac) {
-    sgx_status_t ret = SGX_SUCCESS;
+/*
+    Validates a form or JS program (or any arbitrary data, really). Validation
+    involves hashing the messagae and then verifiying that the signiture is valid.
 
-    if(mac_size != SGX_CMAC_MAC_SIZE)
-    {
-        ret = SGX_ERROR_INVALID_PARAMETER;
-        return ret;
-    }
+    Params:
+        --p_message: a pointer to the data being validated
+        --message_size: the length of the data
+        --p_signiture: a pointer to the signiture
+*/
 
-
-    uint8_t aes_gcm_iv[12] = {0};
-    ret = sgx_rijndael128GCM_decrypt((const sgx_aes_gcm_128bit_tag_t *) (&g_secret),
-                                     p_mac,
-                                     mac_size,
-                                     &mac_secret[0],
-                                     &aes_gcm_iv[0],
-                                     12,
-                                     NULL,
-                                     0,
-                                     (const sgx_aes_gcm_128bit_tag_t *)
-                                        (p_gcm_mac));
-
-    return ret;
-}
-
-#include <bitset>
 sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
                       sgx_ec256_signature_t* p_signature) {
     
@@ -618,95 +571,43 @@ sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
     {
         printf_enc("\nError, cannot get ECC context\n");
     }
-    /*for(int i = 0; i < sizeof(sgx_ecc_state_handle_t); i++) {
-        printf_enc("%d | ", std::bitset<8>(((char*) &ecc_handle)[i]));
-    }
-    printf_enc("\n");*/
 
     uint8_t result;
-    /*printf_enc("%d\n", (int)((char*) p_signature)[0]);
-    printf_enc("%d\n", (int)((char*) p_signature)[2]);
-    printf_enc("validating on %s with lenght %d\n", (char*)p_message, message_size);*/
-    //std::string t = "{\"formName\": \"loginform\", \"password\": \"\",\"username\": \"\",}";
-    //p_message = (uint8_t*) t.c_str();
-    //message_size = t.length();
-
-
     sgx_sha256_hash_t hash;
     sgx_status_t ret = sgx_sha256_msg(p_message,message_size,&hash);
 
     if(ret != SGX_SUCCESS) {
         return ret;
     }
-    //printf_enc("hash size: %d\n", (uint32_t) sizeof(sgx_sha256_hash_t));
-	//printf_enc("hash: ");
-    //for(int i = 0; i < 32; i++) {
-   //     printf_enc("%d | ", std::bitset<8>(((char*) &hash)[i]));
-    //} 
-    
-    //printf_enc("%d\n", ((char*) &hash)[0]);
-    //printf_enc("%d\n", ((char*) &hash)[1]);
 
-	//vish test
-	/*sgx_ec256_private_t test_priv;
-	sgx_ec256_public_t test_p_key;
-	printf_enc("sgx_ec256_private_t size: %d\n", (uint32_t) sizeof(sgx_ec256_private_t));
-	ret=sgx_ecc256_create_key_pair(&test_priv,&test_p_key,ecc_handle);
-	for(int i = 0; i < 32; i++) {
-        printf_enc("0x%x, ", std::bitset<8>(((char*) &test_priv)[i]));
-    } 
-	printf_enc("sgx_ec256_public_t size: %d\n", (uint32_t) sizeof(sgx_ec256_public_t));
-	for(int i = 0; i < 64; i++) {
-        printf_enc("0x%x, ", std::bitset<8>(((char*) &test_p_key)[i]));
-    } 
-	
-	printf_enc("\n new key, ret: %d\n", ret);*/
-	
-
-	//
-	//printf_enc(" sgx hash size: %d\n", (uint32_t) sizeof(sgx_sha256_hash_t));
-    sgx_ec256_signature_t sig;
-    //ret = sgx_ecdsa_sign((uint8_t*) &hash,(uint32_t) sizeof(sgx_sha256_hash_t), &test_priv,&sig,ecc_handle);
-	
-    //printf_enc(" sgx signature size: %d\n", (uint32_t) sizeof(sgx_ec256_signature_t));
-    /*for(int i = 0; i < sizeof(sgx_ec256_signature_t); i++) {
-        printf_enc("%d | ", std::bitset<8>(((char*) &sig)[i]));
-    } 
-    printf_enc("\n");*/
-
-    ret = sgx_ecdsa_verify((uint8_t*) &hash, (uint32_t) sizeof(sgx_sha256_hash_t),&test_p_key,&sig,
-      		//p_signature,
+    ret = sgx_ecdsa_verify((uint8_t*) &hash, (uint32_t) sizeof(sgx_sha256_hash_t),&test_p_key,p_signature,
             &result,ecc_handle);
     if(ecc_handle)
     {
         sgx_ecc256_close_context(ecc_handle);
     }
     if(ret != SGX_SUCCESS) {
-        printf_enc("ret: %d\n", ret);
         return ret;
     }
     if((sgx_generic_ecresult_t) result != SGX_EC_VALID) {
-        printf_enc("invalid ret: %d\n", SGX_EC_VALID);
-        printf_enc("invalid ret: %d\n", result);
-    
-        printf_enc("invalid ret: %d\n", ret);
         return SGX_ERROR_INVALID_PARAMETER;
     }
-    printf_enc("ret: %d\n", ret);
     return ret;
 }
 
-//adds a new form to the internal list of forms
+//adds a new form to the map of forms
 sgx_status_t add_form(const char* name, size_t len, 
                         const char* this_origin, size_t origin_len, uint16_t x, uint16_t y) {
 
-    printf_enc("name: %s\n", name);
-   std::string oName = copyString(this_origin, origin_len);
+    std::string oName = copyString(this_origin, origin_len);
+    
+    //if the manager is attempting to change the origin, something has gone wrong
     if (origin != "" && origin != oName) {
         return SGX_ERROR_INVALID_PARAMETER;
     } else {
         origin = oName;
     }
+
     std::string eName = copyString(name, len);
     if(forms.count(eName) > 0) {
       return SGX_ERROR_INVALID_PARAMETER; //error if form already exists
@@ -715,73 +616,64 @@ sgx_status_t add_form(const char* name, size_t len,
         new_form.name = eName;
         new_form.x = x;
         new_form.y = y;
-        new_form.validated = false;
-        printf_enc("added new form: %s\n", eName);
+        new_form.validated = false; //forms start out not validated
         forms.insert(std::pair<std::string, form>(eName, new_form));
-        printf_enc("f: %s\n" , parse_form(new_form, true));
         return SGX_SUCCESS;
     }
 }
 
-//adds a new input field to a form
-sgx_status_t add_input(const char * name, size_t len1, const char* input_i, size_t len2,
+/*
+    Creates a new input field in a form. All the paramaters are self-explanatory except
+    val. This int signals whether the form is ready to validate. Set it to 1 when adding
+    the last input field to trigger validation. Note that the p_sig_form variable is only
+    used when validation occurs. Also note that after a form is validated it can no longer 
+    be modified. 
+
+*/
+sgx_status_t add_input(const char * form_name, size_t len_form, const char* input_name, size_t len_input,
                     const uint8_t *p_sig_form, size_t sig_form_size, int val, uint16_t x, uint16_t y, uint16_t height, uint16_t width) {
-    printf_enc("ENCLAVE: ADD_INPUT: adding input named: %s to form %s", input_i, name);
-    std::string eName = copyString(name, len1);
-    std::string eInput = copyString(input_i, len2);
-    printf_enc("form: %s\n", eName);
-    printf_enc("input: %s\n", eInput);
-    if(forms.count(eName) == 0) {
-        printf_enc("ENCLAVE: form named: %s not found", eName);
+    std::string formName = copyString(form_name, len_form);
+    std::string inputName = copyString(input_name, len_input);
+    if(forms.count(formName) == 0) {
+        printf_enc("ENCLAVE: form named: %s not found", formName);
         return SGX_ERROR_INVALID_PARAMETER; //error if form does not exist
     } else {  
-        printf_enc("found form\n");
         std::map<std::string, form>::iterator it;
-        it = forms.find((std::string) eName);
+        it = forms.find((std::string) formName);
         form f = it->second;
-        /*if(f.validated) {
+        if(f.validated) { //you can't add inputs to an already validated form
             return SGX_ERROR_INVALID_PARAMETER;
-        }*/
+        }
 
 
-        if(f.inputs.count(eInput) > 0) {
-            printf_enc("ENCLAVE: tried to add already existing input named %s to form %s", eInput, eName);
+        if(f.inputs.count(inputName) > 0) {
+            printf_enc("ENCLAVE: tried to add already existing input named %s to form %s", inputName, formName);
             return SGX_ERROR_INVALID_PARAMETER; //error if input already exists
         } else {
-            printf_enc("adding input\n");
             input new_input;
-            std::string form = parse_form(f, false);
-            form = parse_form(f, false);
-            new_input.name = eInput;
+            new_input.name = inputName;
             new_input.x = x;
             new_input.y = y;
             new_input.width = width;
             new_input.height = height;
             new_input.value = "";
-            //f.inputs[eInput] = new_input;
-            f.inputs.insert(std::pair<std::string, input>(eInput, new_input));
+            f.inputs.insert(std::pair<std::string, input>(inputName, new_input));
 
-            //inputs.insert(std::pair<std::string, input>(eInput, new_input));
-                        // all inputs added, then only parse form and validate form
+
+            // after all inputs added, parse form and validate form
             if(val == 1) {
-                printf_enc("validating\n");
                 std::string form = parse_form(f, false);
-                size_t len_form = form.length();
-                if(SGX_SUCCESS == validate((uint8_t*) form.c_str(), (uint32_t) len_form, (sgx_ec256_signature_t*) p_sig_form)) {        
-                    printf_enc("validation successful\n");
+                if(SGX_SUCCESS == validate((uint8_t*) form.c_str(), (uint32_t) form.length(), (sgx_ec256_signature_t*) p_sig_form)) {        
                     f.validated = true;
                 }
                 else {
-                    printf_enc("validation failed\n");
                     // delete form, return failure
                     f.validated = true;
-                    //forms.erase((std::string) eName);
-                    //return SGX_ERROR_MAC_MISMATCH;
+                    forms.erase((std::string) formName);
+                    return SGX_ERROR_INVALID_PARAMETER;
                 }
             }             
-            // what's the point of this line again Sawyer?
             it->second = f;
-            printf_enc("added new input: %s\n", eInput);
             return SGX_SUCCESS;
         }
     }
@@ -811,11 +703,11 @@ sgx_status_t onFocus(const char* formName, const char* inputName,
   curForm = f;
   curInput = it2->second;
   printf_enc("INPUT: Input name = %s which should be the same as: %s", inputName, curInput.name);
-    printf_enc("INPUT: Input Field Value = %s", curInput.value);
-    printf_enc("INPUT: Input Field X = %d", curInput.x);
-    printf_enc("INPUT: Input Field Y = %d", curInput.y);
-    printf_enc("INPUT: Input Field Width = %d", curInput.width);
-    printf_enc("INPUT: Input Field Height= %d", curInput.height);
+  printf_enc("INPUT: Input Field Value = %s", curInput.value);
+  printf_enc("INPUT: Input Field X = %d", curInput.x);
+  printf_enc("INPUT: Input Field Y = %d", curInput.y);
+  printf_enc("INPUT: Input Field Width = %d", curInput.width);
+  printf_enc("INPUT: Input Field Height= %d", curInput.height);
   return SGX_SUCCESS;
 }
 
@@ -826,6 +718,8 @@ sgx_status_t onBlur() {
   return SGX_SUCCESS;
 }
 
+
+//Returns the lengh of a form in bytes. Note that this includes the values in the form's fields.
 uint32_t form_len(const char* formName) {
   std::map<std::string, form>::iterator it;
   it = forms.find((std::string) formName);
@@ -861,12 +755,13 @@ sgx_status_t submit_form(const char* formName,
         0,
         (sgx_aes_gcm_128bit_tag_t *) (p_gcm_mac));
 
-  if(str_form == "-1") {
+  if(ret  != SGX_SUCCESS) {
     return SGX_ERROR_INVALID_PARAMETER;
   }
   return SGX_SUCCESS;
 }
 
+//useful debugging function that decrypts and encrypted form
 sgx_status_t test_decryption(uint8_t* form, uint32_t form_size, uint8_t* mac) {
     uint8_t output[form_size] = {0};
     uint8_t aes_gcm_iv[12] = {0};
@@ -887,18 +782,16 @@ sgx_status_t test_decryption(uint8_t* form, uint32_t form_size, uint8_t* mac) {
     printf_enc("\n");
 }
 
-int t = 5;
-int s = 6;
+
+//native function for tinyJS that enables printing
 void js_print(CScriptVar *v, void *userdata) {
     printf_enc("> %s\n", v->getParameter("text")->getString().c_str());
 }
 
-// void js_print_t(CScriptVar *v, void *userdata) {
-//     printf_enc("test\n");
-//     printf_enc("> %s\n", *(int*)userdata);
-// }
 
-
+//native function updates the value in a field in a form. Note that this must be 
+//called in addtion to modifying the object representing the form w/in tinyJS to keep
+//the "true" form and its tinyJS representation in sync.
 void js_update_form(CScriptVar *v, void *userdata) {
     std::string formName = v->getParameter("formName")->getString();
     std::string inputName = v->getParameter("inputName")->getString();
@@ -907,6 +800,12 @@ void js_update_form(CScriptVar *v, void *userdata) {
     printf_enc("set %s to %s\n", inputName, val);
 }
 
+
+/*
+    native function that makes HTTP requests. The request must be directed at the origin
+    of the enclave. The OCALL enc_make_http_request should return a return code indicating 
+    whether the request was successfully sent
+*/
 void js_make_http_request(CScriptVar *v, void* userdata) {
     std::string method = v->getParameter("method")->getString();
     std::string url = v->getParameter("url")->getString();
@@ -936,29 +835,28 @@ void js_make_http_request(CScriptVar *v, void* userdata) {
         return;    
     }
     request_data = std::string((char *) &encr_val[0]);
-    printf_enc("%s\n", request_data.c_str());
     int ret_code = 0;
     enc_make_http_request(&ret, method.c_str(), url.c_str(), headers.c_str(), request_data.c_str(), &p_gcm_mac[0], &ret_code);
     if(ret != SGX_SUCCESS) {
         printf_enc("Error: request failed");
         return; 
     }
-    printf_enc("return code: %d\n", ret_code);
     v->getReturnVar()->setInt(ret_code);
 }
 
+//this tracks whether an HTTP response is ready f
 bool response_ready = false;
 std::string response;
 
+//once an HTTP response is ready use this to load the response into the enclave and 
+//signal that it is ready for tinyJS
 void get_http_response(char* http_response, size_t response_len) {
-    printf_enc("starting\n");
     response = copyString(http_response, response_len);
     response_ready = true;
-    printf_enc("set response_ready\n");
 }
 
+//native function that essentially busy waits until the HTTP response is ready
 void js_get_http_response(CScriptVar *v, void* userdata) {
-    //printf_enc("%d\n", response_ready);
     if(response_ready == true) {
         v->getReturnVar()->setString(response);
         response_ready = false;
@@ -967,28 +865,52 @@ void js_get_http_response(CScriptVar *v, void* userdata) {
     }
 }
 
+/*
+    Native function that loads data from secure storage. A call to this function is automatically
+    added to the start of every JS program run in the enclave.
+
+    NOTE: Currently this is buggy.
+
+    The OCALL ocall_get_file_size computes the size of buffer to allocate for the loaded 
+    data.
+
+*/
 void js_load_items(CScriptVar *v, void *userdata) {
     std::string sealed;
     size_t data_len;
     ocall_get_file_size(&data_len, (origin + ".txt").c_str());
-    ocall_read_file((origin + ".txt").c_str(), &sealed[0], data_len);
-    uint32_t len = sgx_get_encrypt_txt_len((const sgx_sealed_data_t*) &sealed);
-    char decrypted_text[len];
-    uint32_t mac_len = 0;
-    sgx_status_t ret = sgx_unseal_data(
-        (const sgx_sealed_data_t*) &sealed,
-        NULL,
-        &mac_len,
-        (uint8_t*) &decrypted_text[0],
-        &len 
-    );
-    if(ret != SGX_SUCCESS) {
-        printf_enc("Error: data unsealing failed\n");
+    if(data_len > 0) {
+        ocall_read_file((origin + ".txt").c_str(), &sealed[0], data_len);
+
+        uint32_t len = sgx_get_encrypt_txt_len((const sgx_sealed_data_t*) &sealed);
+        char decrypted_text[len];
+        uint32_t mac_len = 0;
+        sgx_status_t ret = sgx_unseal_data(
+            (const sgx_sealed_data_t*) &sealed,
+            NULL,
+            &mac_len,
+            (uint8_t*) &decrypted_text[0],
+            &len 
+        );
+
+        if(ret != SGX_SUCCESS) {
+            printf_enc("Error: data unsealing failed\n");
+        }
+        std::string decrypted = std::string(decrypted_text);
+        v->getReturnVar()->setString(decrypted);
+    } else {
+        v->getReturnVar()->setString("{}");
+
     }
-    v->getReturnVar()->setString(std::string(decrypted_text));
     return; 
 }
 
+/*
+    Native function that saves to secure storage. A call to this function is automatically
+    added to the end of every JS program run in the enclave.
+
+    NOTE: Currently this is buggy.
+*/
 void js_save_items(CScriptVar *v, void *userdata) {
     std::string data_to_store = v->getParameter("data")->getString();
     uint32_t len = (uint32_t) data_to_store.length();
@@ -1002,23 +924,34 @@ void js_save_items(CScriptVar *v, void *userdata) {
         sealed_size,
         &sealed_data[0]
     );
+
     if(ret != SGX_SUCCESS) {
         printf_enc("Error: data sealing failed\n");
     }
-    ocall_write_file((origin + ".txt").c_str(), (char*)&sealed_data[0]);
+    ocall_write_file((origin + ".txt").c_str(), (char*)&sealed_data[0], sealed_size);
     return;
 }
 
+//I don't remember what this does--it comes with the tinyJS sample script
 void js_dump(CScriptVar *v, void *userdata) {
     CTinyJS *js = (CTinyJS*)userdata;
     js->root->trace(">  ");
 }
 
-sgx_status_t run_js(char* code, size_t len, const uint8_t *p_sig_code, size_t len2){
-    //if(SGX_SUCCESS != validate((uint8_t*) code, (uint32_t) len, (sgx_ec256_signature_t*) p_sig_code)) {        
-    //    return SGX_ERROR_INVALID_PARAMETER;
-    //}
+/*
+    Runs a string of JS in the tinyJS enviornment. See documentation on tinyJS at
+    https://github.com/gfwilliams/tiny-js/tree/56a0c6d92b5ced9d8b2ade32eec5ddfdfdb49ef5
 
+*/
+sgx_status_t run_js(char* code, size_t len, const uint8_t *p_sig_code, size_t len_sig){
+    
+    //comment this out to avoid validation while debugging
+    if(SGX_SUCCESS != validate((uint8_t*) code, (uint32_t) len, (sgx_ec256_signature_t*) p_sig_code)) {        
+       return SGX_ERROR_INVALID_PARAMETER;
+    }
+
+
+    //parse forms and add them as objects to the start of the JS code
     std::string str_forms = "";
     for(std::map<std::string, form>::iterator it = forms.begin();
     it != forms.end(); ++it)
@@ -1029,17 +962,18 @@ sgx_status_t run_js(char* code, size_t len, const uint8_t *p_sig_code, size_t le
             continue;
         }
         std::string form = parse_form(it->second, true);
-        str_forms += name + " = " + form + ";";
+        str_forms += "var " + name + " = " + form + ";";
     }
-    //str_forms = "print('working');update_form('tmp', 'tst', 'working');"; //remove long-term
 
     char tmp[len];
     memcpy(tmp, code, len);
     std::string enc_code = std::string(tmp);
-    //enc_code += "var str_data = __native_js_load_items(); var data = eval(str_data);";
+    
+    //also add loading/saving code
+    enc_code = "var str_data = __native_js_load_items(); var local_storage_data = eval(str_data);\n" + enc_code;
     enc_code = str_forms + enc_code;  
-    //enc_code += "str_data = JSON.stringify(data); __native_js_save_items(str_data);";
-    printf_enc("\n%s\n", enc_code.c_str());
+    enc_code += "\nstr_data = JSON.stringify(local_storage_data, undefined); __native_js_save_items(str_data);";
+    
     std::string res;
     CTinyJS *js = new CTinyJS();
     registerFunctions(js);
@@ -1051,24 +985,13 @@ sgx_status_t run_js(char* code, size_t len, const uint8_t *p_sig_code, size_t le
     js->addNative("function __native_js_load_items()", js_load_items, js);
     js->addNative("function __native_js_save_items(data)", js_save_items, js);
     try {
-        //js->execute("print_t()");
-        //t = 6;
-        //js->execute("print_t()");
-        //js->execute("var lets_quit = 0; function quit() { lets_quit = 1; }");
-        // js->execute("print(\n\"Interactive mode... Type quit(); to exit, or print(...); to print something, or dump() to dump the symbol table!\");");
         js->execute(enc_code);
     } catch (CScriptException *e) {
         printf_enc("ERROR: %s\n", e->text.c_str());
         return SGX_ERROR_UNEXPECTED;
     }
-    res = js->evaluate("result");
-    printf_enc("testing inside: %s\n", res.c_str());
+    res = js->evaluate("result"); //note: result is just a variable defined in the code
     memcpy(code, res.c_str(), res.length()+1);
-    // printf_enc("testing: %s", res);
-  std::map<std::string, form>::iterator it;
-  it = forms.find((std::string) "loginform");
-  form f = it->second;
-  parse_form(f, true);
   delete js;
   return SGX_SUCCESS;
 }
