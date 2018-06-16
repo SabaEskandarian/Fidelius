@@ -2,6 +2,7 @@ const ON_BLUR = 0;
 const ON_FOCUS = 1;
 const ADD_FORM = 3;
 const ADD_SCRIPT = 4;
+const SUBMIT_FORM = 5;
 
 var useEnclave = false;
 
@@ -186,13 +187,30 @@ function getInputCoords(form, input) {
 	formString += yCoord + "\n";
 }
 
+function formSubmission(e) {
+	e = e || window.event;
+    var target = e.target || e.srcElement;
+    e.preventDefault();
+    console.log(SUBMIT_FORM + "\n" + getFormName(target) + "\n");
+    formPort.postMessage(SUBMIT_FORM + "\n" + getFormName(target) + "\n");
+}
+
 function getInputs(form) {
   for (var i = 0; i < form.elements.length; i++) {
     if (form.elements[i].nodeName == "INPUT") {
       var acceptedTypes = ["text", "number", "tel", "email", "password", "url"];
       var type = form.elements[i].getAttribute("type");
+
+      if (form.elements[i].hasAttribute("type")) {
+    	if (form.elements[i].getAttribute("type") == "submit") {
+    		form.elements[i].addEventListener("click", formSubmission);
+    	}
+      }
+
       if (acceptedTypes.indexOf(type) == -1) continue;
-    } else if (form.elements[i].nodeName != "TEXTAREA") continue;
+
+    } 
+    else continue;
 
     input = form.elements[i];
 
@@ -273,9 +291,9 @@ function main() {
 	if (scriptString != "") JSport.postMessage(scriptString);
 
 	//Redirects to file
-	if (window.confirm("Click \"OK\" to view to parsed HTML info.")) {
+	/*if (window.confirm("Click \"OK\" to view to parsed HTML info.")) {
 	window.location.href = file;
-	}
+	}*/
 }
 
 main();
