@@ -1,0 +1,157 @@
+hello from the enclave manager!
+
+CREATED THREAD
+name: loginform
+
+added new form: loginform
+
+f: {"formName": "loginform",}
+
+ADD FORM with name: loginform signature: 7b4b6ef239c0327d364e483dfbe275af19748380b3957d7519bb3599effaa077486871f1b97de5c24945eb306105048a56319e56ecc18c543f130321b6c8fe0e
+	ADD INPUT: username (109,0) 
+ENCLAVE: ADD_INPUT: adding input named: username to form loginform
+form: loginform
+
+input: username
+
+found form
+
+adding input
+
+added new input: username
+
+	ADD INPUT: password (104,31) 
+ENCLAVE: ADD_INPUT: adding input named: password to form loginform
+form: loginform
+
+input: password
+
+found form
+
+adding input
+
+validating
+
+ret: 0
+
+validation successful
+
+added new input: password
+
+
+
+FOCUS on form: loginform input: username at: 109.945, 87.6562 width: 253.5 height: 25.5
+INPUT: FORM NAME = loginform
+INPUT: Input name = username which should be the same as: username
+INPUT: Input Field Value = 
+INPUT: Input Field X = 109
+INPUT: Input Field Y = 0
+INPUT: Input Field Width = 253
+INPUT: Input Field Height= 25
+
+
+BLUR on form: loginform input: username at: 73.2969, 58.4375
+
+
+FOCUS on form: loginform input: password at: 104.672, 119.156 width: 253.5 height: 25.5
+INPUT: FORM NAME = loginform
+INPUT: Input name = password which should be the same as: password
+INPUT: Input Field Value = 
+INPUT: Input Field X = 104
+INPUT: Input Field Y = 31
+INPUT: Input Field Width = 253
+INPUT: Input Field Height= 25
+
+
+BLUR on form: loginform input: password at: 69.7812, 79.4375
+
+
+FOCUS on form: loginform input: username at: 109.945, 87.6562 width: 253.5 height: 25.5
+INPUT: FORM NAME = loginform
+INPUT: Input name = username which should be the same as: username
+INPUT: Input Field Value = 
+INPUT: Input Field X = 109
+INPUT: Input Field Y = 0
+INPUT: Input Field Width = 253
+INPUT: Input Field Height= 25
+
+
+BLUR on form: loginform input: username at: 73.2969, 58.4375
+
+
+FOCUS on form: loginform input: password at: 104.672, 119.156 width: 253.5 height: 25.5
+INPUT: FORM NAME = loginform
+INPUT: Input name = password which should be the same as: password
+INPUT: Input Field Value = 
+INPUT: Input Field X = 104
+INPUT: Input Field Y = 31
+INPUT: Input Field Width = 253
+INPUT: Input Field Height= 25
+
+
+BLUR on form: loginform input: password at: 69.7812, 79.4375
+
+
+FOCUS on form: loginform input: username at: 109.945, 87.6562 width: 253.5 height: 25.5
+INPUT: FORM NAME = loginform
+INPUT: Input name = username which should be the same as: username
+INPUT: Input Field Value = 
+INPUT: Input Field X = 109
+INPUT: Input Field Y = 0
+INPUT: Input Field Width = 253
+INPUT: Input Field Height= 25
+
+
+BLUR on form: loginform input: username at: 73.2969, 58.4375
+
+
+FOCUS on form: loginform input: password at: 104.672, 119.156 width: 253.5 height: 25.5
+INPUT: FORM NAME = loginform
+INPUT: Input name = password which should be the same as: password
+INPUT: Input Field Value = 
+INPUT: Input Field X = 104
+INPUT: Input Field Y = 31
+INPUT: Input Field Width = 253
+INPUT: Input Field Height= 25
+
+
+BLUR on form: loginform input: password at: 69.7812, 79.4375
+
+
+FOCUS on form: loginform input: username at: 109.945, 87.6562 width: 253.5 height: 25.5
+INPUT: FORM NAME = loginform
+INPUT: Input name = username which should be the same as: username
+INPUT: Input Field Value = 
+INPUT: Input Field X = 109
+INPUT: Input Field Y = 0
+INPUT: Input Field Width = 253
+INPUT: Input Field Height= 25
+
+
+BLUR on form: loginform input: username at: 73.2969, 58.4375
+
+
+FOCUS on form: loginform input: username at: 109.945, 87.6562 width: 253.5 height: 25.5
+INPUT: FORM NAME = loginform
+INPUT: Input name = username which should be the same as: username
+INPUT: Input Field Value = 
+INPUT: Input Field X = 109
+INPUT: Input Field Y = 0
+INPUT: Input Field Width = 253
+INPUT: Input Field Height= 25
+
+
+BLUR on form: loginform input: username at: 73.2969, 58.4375
+
+
+FOCUS on form: loginform input: username at: 109.945, 87.6562 width: 253.5 height: 25.5
+INPUT: FORM NAME = loginform
+INPUT: Input name = username which should be the same as: username
+INPUT: Input Field Value = 
+INPUT: Input Field X = 109
+INPUT: Input Field Y = 0
+INPUT: Input Field Width = 253
+INPUT: Input Field Height= 25
+
+
+BLUR on form: loginform input: username at: 73.2969, 58.4375
