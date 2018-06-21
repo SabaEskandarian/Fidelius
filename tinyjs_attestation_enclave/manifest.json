@@ -9,7 +9,8 @@
   "browser_action": {},
   "permissions": [
     "nativeMessaging",
- 		"activeTab",
- 		"<all_urls>"
+    "activeTab",
+    "<all_urls>",
+    "tabs"
   ]
 }

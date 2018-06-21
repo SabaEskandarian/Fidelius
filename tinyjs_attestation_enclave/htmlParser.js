@@ -4,17 +4,15 @@ const ADD_FORM = 3;
 const ADD_SCRIPT = 4;
 const SUBMIT_FORM = 5;
 
-var useEnclave = false;
-
 //Get all script tags
 var scriptArray = document.getElementsByTagName("script");
 var scriptString = "";
 
+var origin = null;
+
 //Get all form tags
 var formArray = document.getElementsByTagName("form");
 var formString = "";
-
-var signature = null;
 
 //Given an input, creates a text file of the input and link for that file
 var textFile = null;
@@ -47,8 +45,6 @@ function getFormName(input) {
  * which is in turn sent to the enclave manager.
  */
 function onFocus() {
-	//alert("focus detected");
-	if (!useEnclave) return;
 	currentFocus = document.activeElement;
 	if (currentFocus.nodeName == "INPUT") {
 		var formName = getFormName(currentFocus);
@@ -75,7 +71,6 @@ function onFocus() {
  * which is in turn sent to the enclave manager.
  */
 function onFocusOut() {
-	if (!useEnclave) return;
 	if (currentFocus.nodeName == "INPUT") {
 		var formName = getFormName(currentFocus);
 		var inputName = getInputName(currentFocus);
@@ -105,18 +100,6 @@ function listen(form) {
 	}
 }
 
-/* Checks whether a form contains the "secure" and "sign" attributes, then marks
- * a boolean to use the enclave if both of these things are true.
- */
-function checkSecureForm(form) {
-	if (form.hasAttribute("sign")) {
-		signature = form.getAttribute("sign");
-	}
-	if (form.hasAttribute("secure")) {
-		useEnclave = true;
-		alert("SECURE FORM" + "\nSignature: " + signature);
-	}
-}
 
 /* Creates a file blob of parsed HTML material. This was used for debugging.
  */
@@ -152,7 +135,7 @@ function extractJS(filename) {
 function parseScriptTags() {
 	for (var i = 0; i < scriptArray.length; i++) {
 		if (scriptArray[i].hasAttribute("sign")) {
-			signature = scriptArray[i].getAttribute("sign");
+			var signature = scriptArray[i].getAttribute("sign");
 
 			scriptString += (ADD_SCRIPT + "\n");
 			scriptString += signature;
@@ -220,6 +203,15 @@ function getInputs(form) {
   }
 }
 
+function getOrigin() {
+	if (document.getElementsByTagName("head")[0].hasAttribute("origin")) {
+		origin = document.getElementsByTagName("head")[0].getAttribute("origin");
+	} else {
+		throw "No origin specified in HTML Head";
+		return;
+	}
+}
+
 //Iterate through all form tags, parse them, and write their contents to a string
 function parseFormTags() {
 	for (var i = 0; i < formArray.length; i++) {
@@ -227,7 +219,8 @@ function parseFormTags() {
 		formString += ADD_FORM.toString() + "\n";
 		formString += form.name + "\n";
 		formString += form.getAttribute("sign") + "\n";
-		formString += location.origin + "\n";
+		getOrigin();
+		formString += origin + "\n";
 		formRect = form.getBoundingClientRect();
 
 		formX = window.screenX + formRect.left;
@@ -240,9 +233,7 @@ function parseFormTags() {
 		formString = "";
 		listen(form);
 
-		if (!useEnclave) checkSecureForm(form);
 	}
-	if (!useEnclave) alert("Insecure form.");
 }
 
 /*
@@ -270,21 +261,30 @@ function createRequest(method, url) {
 }
 
 function initializeMessaging() {
-	JSport = chrome.runtime.connect({name: "JavaScript"});
-	JSport.onMessage.addListener(function(msg) {
-  		console.log("received JS: \n" + msg.valueOf());
-	});
-	formPort = chrome.runtime.connect({name: "Form"});
+	formPort = chrome.runtime.connect({name: "Message"});
 	formPort.onMessage.addListener(function(msg) {
-			console.log("received Form: \n" + msg.valueOf());
+		if (msg.search("form_submit") != -1) {
+			var submission = JSON.parse(msg);
+			console.log(btoa(submission.form_submit));
+			window.location = origin + "?submit=" + submission.form_submit;
+		} else console.log("received Message: \n" + msg.valueOf());
 	});
 }
 
+function isSecure() {
+	return document.getElementsByTagName("head")[0].hasAttribute("secure");
+}
+
 function main() {
+	if (!isSecure()) {
+		alert("insecure form");
+		return;
+	}
+
 	initializeMessaging();
+
 	parseFormTags();
 	//parseScriptTags();
-	if (!useEnclave) return;
 
 	var file = makeTextFile(scriptString + formString);
 

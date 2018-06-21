@@ -520,6 +520,7 @@ void printForm(form f){
 
 */
 std::string parse_form(form f, bool include_vals) {
+    printForm(f);
     std::string start = "{\"formname\": \"" + f.name + "\", "; //"formname" is a reserved input name 
     std::string end = "}";                                     
     std::string parsed = "" + start;
@@ -564,14 +565,15 @@ std::string copyString(const char* s, size_t len) {
 
 sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
                       sgx_ec256_signature_t* p_signature) {
-    
+
+
+
     sgx_ecc_state_handle_t ecc_handle;
     sgx_status_t sample_ret = sgx_ecc256_open_context(&ecc_handle);
     if(SGX_SUCCESS != sample_ret)
     {
         printf_enc("\nError, cannot get ECC context\n");
     }
-
     uint8_t result;
     sgx_sha256_hash_t hash;
     sgx_status_t ret = sgx_sha256_msg(p_message,message_size,&hash);
@@ -625,7 +627,7 @@ sgx_status_t add_form(const char* name, size_t len,
         new_input.width = 10;
         new_input.height = 10;
         new_input.name = "dummy form";
-        new_form.validated = false; //forms start out not validated
+        new_form.validated = false; //this should be false but the feature is buggy
         forms.insert(std::pair<std::string, form>(eName, new_form));
         return SGX_SUCCESS;
     }
@@ -652,6 +654,7 @@ sgx_status_t add_input(const char * form_name, size_t len_form, const char* inpu
         it = forms.find((std::string) formName);
         form f = it->second;
         if(f.validated) { //you can't add inputs to an already validated form
+            printf_enc("TRIED TO ADD TO AN ALREADY VALIDATED FORM");
             return SGX_ERROR_INVALID_PARAMETER;
         }
 
@@ -673,11 +676,13 @@ sgx_status_t add_input(const char * form_name, size_t len_form, const char* inpu
             // after all inputs added, parse form and validate form
             if(val == 1) {
                 std::string form = parse_form(f, false);
+                printf_enc("VALIDATING: %s", form.c_str());
                 if(SGX_SUCCESS == validate((uint8_t*) form.c_str(), (uint32_t) form.length(), (sgx_ec256_signature_t*) p_sig_form)) {        
                     f.validated = true;
                 }
                 else {
                     // delete form, return failure
+                    printf_enc("VALIDATION FAILED, DELETING FORM");
                     f.validated = true;
                     forms.erase((std::string) formName);
                     return SGX_ERROR_INVALID_PARAMETER;
@@ -742,15 +747,16 @@ uint32_t form_len(const char* formName) {
 }
 
 //see put_secret_data for explanation of types
-sgx_status_t submit_form(const char* formName, 
-    uint8_t* dest, uint32_t encr_size, uint8_t* p_gcm_mac) {
+sgx_status_t submit_form(const char* formName, uint8_t* dest, uint32_t encr_size, uint8_t* p_gcm_mac) {
   std::map<std::string, form>::iterator it;
   it = forms.find((std::string) formName);
   if(it == forms.end()) {
+    printf_enc("SUBMIT reeee didnt find requested form");
     return SGX_ERROR_INVALID_PARAMETER;
   }
   form f = it->second;
   if(!f.validated) {
+    printf_enc("SUBMIT reeee form not validated");
     return SGX_ERROR_INVALID_PARAMETER;
   }
 
@@ -769,6 +775,7 @@ sgx_status_t submit_form(const char* formName,
   if(ret  != SGX_SUCCESS) {
     return SGX_ERROR_INVALID_PARAMETER;
   }
+  printf_enc("SUBMIT returning normally");
   return SGX_SUCCESS;
 }
 

@@ -29,17 +29,12 @@ typedef struct ms_put_secret_data_t {
 	uint8_t* ms_gcm_mac;
 } ms_put_secret_data_t;
 
-typedef struct ms_get_mac_key_t {
-	sgx_status_t ms_retval;
-	uint8_t* ms_p_mac;
-	uint32_t ms_mac_size;
-	uint8_t* ms_gcm_mac;
-} ms_get_mac_key_t;
-
 typedef struct ms_run_js_t {
 	sgx_status_t ms_retval;
 	char* ms_code;
 	size_t ms_len;
+	uint8_t* ms_code_sig;
+	size_t ms_len2;
 } ms_run_js_t;
 
 typedef struct ms_add_form_t {
@@ -54,10 +49,10 @@ typedef struct ms_add_form_t {
 
 typedef struct ms_add_input_t {
 	sgx_status_t ms_retval;
-	char* ms_name;
-	size_t ms_len1;
-	char* ms_input_i;
-	size_t ms_len2;
+	char* ms_form_name;
+	size_t ms_len_form;
+	char* ms_input_name;
+	size_t ms_len_input;
 	uint8_t* ms_sig_form;
 	size_t ms_sig_form_size;
 	int ms_validate;
@@ -119,6 +114,11 @@ typedef struct ms_test_decryption_t {
 	uint8_t* ms_gcm_mac;
 } ms_test_decryption_t;
 
+typedef struct ms_get_http_response_t {
+	char* ms_response;
+	size_t ms_len;
+} ms_get_http_response_t;
+
 typedef struct ms_sgx_ra_get_ga_t {
 	sgx_status_t ms_retval;
 	sgx_ra_context_t ms_context;
@@ -167,8 +167,26 @@ typedef struct ms_enc_make_http_request_t {
 	char* ms_url;
 	char* ms_headers;
 	char* ms_request_data;
+	uint8_t* ms_p_mac;
 	int* ms_ret_code;
 } ms_enc_make_http_request_t;
+
+typedef struct ms_ocall_write_file_t {
+	char* ms_fname;
+	char* ms_data;
+	size_t ms_len;
+} ms_ocall_write_file_t;
+
+typedef struct ms_ocall_get_file_size_t {
+	size_t ms_retval;
+	char* ms_fname;
+} ms_ocall_get_file_size_t;
+
+typedef struct ms_ocall_read_file_t {
+	char* ms_fname;
+	char* ms_data;
+	size_t ms_len;
+} ms_ocall_read_file_t;
 
 typedef struct ms_create_session_ocall_t {
 	sgx_status_t ms_retval;
@@ -242,7 +260,31 @@ static sgx_status_t SGX_CDECL isv_enclave_ocall_print_string(void* pms)
 static sgx_status_t SGX_CDECL isv_enclave_enc_make_http_request(void* pms)
 {
 	ms_enc_make_http_request_t* ms = SGX_CAST(ms_enc_make_http_request_t*, pms);
-	ms->ms_retval = enc_make_http_request((const char*)ms->ms_method, (const char*)ms->ms_url, (const char*)ms->ms_headers, (const char*)ms->ms_request_data, ms->ms_ret_code);
+	ms->ms_retval = enc_make_http_request((const char*)ms->ms_method, (const char*)ms->ms_url, (const char*)ms->ms_headers, (const char*)ms->ms_request_data, ms->ms_p_mac, ms->ms_ret_code);
+
+	return SGX_SUCCESS;
+}
+
+static sgx_status_t SGX_CDECL isv_enclave_ocall_write_file(void* pms)
+{
+	ms_ocall_write_file_t* ms = SGX_CAST(ms_ocall_write_file_t*, pms);
+	ocall_write_file((const char*)ms->ms_fname, (const char*)ms->ms_data, ms->ms_len);
+
+	return SGX_SUCCESS;
+}
+
+static sgx_status_t SGX_CDECL isv_enclave_ocall_get_file_size(void* pms)
+{
+	ms_ocall_get_file_size_t* ms = SGX_CAST(ms_ocall_get_file_size_t*, pms);
+	ms->ms_retval = ocall_get_file_size((const char*)ms->ms_fname);
+
+	return SGX_SUCCESS;
+}
+
+static sgx_status_t SGX_CDECL isv_enclave_ocall_read_file(void* pms)
+{
+	ms_ocall_read_file_t* ms = SGX_CAST(ms_ocall_read_file_t*, pms);
+	ocall_read_file((const char*)ms->ms_fname, ms->ms_data, ms->ms_len);
 
 	return SGX_SUCCESS;
 }
@@ -321,12 +363,15 @@ static sgx_status_t SGX_CDECL isv_enclave_sgx_thread_set_multiple_untrusted_even
 
 static const struct {
 	size_t nr_ocall;
-	void * table[11];
+	void * table[14];
 } ocall_table_isv_enclave = {
-	11,
+	14,
 	{
 		(void*)isv_enclave_ocall_print_string,
 		(void*)isv_enclave_enc_make_http_request,
+		(void*)isv_enclave_ocall_write_file,
+		(void*)isv_enclave_ocall_get_file_size,
+		(void*)isv_enclave_ocall_read_file,
 		(void*)isv_enclave_create_session_ocall,
 		(void*)isv_enclave_exchange_report_ocall,
 		(void*)isv_enclave_close_session_ocall,
@@ -386,25 +431,15 @@ sgx_status_t put_secret_data(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_
 	return status;
 }
 
-sgx_status_t get_mac_key(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* p_mac, uint32_t mac_size, uint8_t* gcm_mac)
-{
-	sgx_status_t status;
-	ms_get_mac_key_t ms;
-	ms.ms_p_mac = p_mac;
-	ms.ms_mac_size = mac_size;
-	ms.ms_gcm_mac = gcm_mac;
-	status = sgx_ecall(eid, 4, &ocall_table_isv_enclave, &ms);
-	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
-	return status;
-}
-
-sgx_status_t run_js(sgx_enclave_id_t eid, sgx_status_t* retval, char* code, size_t len)
+sgx_status_t run_js(sgx_enclave_id_t eid, sgx_status_t* retval, char* code, size_t len, const uint8_t* code_sig, size_t len2)
 {
 	sgx_status_t status;
 	ms_run_js_t ms;
 	ms.ms_code = code;
 	ms.ms_len = len;
-	status = sgx_ecall(eid, 5, &ocall_table_isv_enclave, &ms);
+	ms.ms_code_sig = (uint8_t*)code_sig;
+	ms.ms_len2 = len2;
+	status = sgx_ecall(eid, 4, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -419,19 +454,19 @@ sgx_status_t add_form(sgx_enclave_id_t eid, sgx_status_t* retval, const char* na
 	ms.ms_origin_len = origin_len;
 	ms.ms_x = x;
 	ms.ms_y = y;
-	status = sgx_ecall(eid, 6, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 5, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
 
-sgx_status_t add_input(sgx_enclave_id_t eid, sgx_status_t* retval, const char* name, size_t len1, const char* input_i, size_t len2, const uint8_t* sig_form, size_t sig_form_size, int validate, uint16_t x, uint16_t y, uint16_t height, uint16_t width)
+sgx_status_t add_input(sgx_enclave_id_t eid, sgx_status_t* retval, const char* form_name, size_t len_form, const char* input_name, size_t len_input, const uint8_t* sig_form, size_t sig_form_size, int validate, uint16_t x, uint16_t y, uint16_t height, uint16_t width)
 {
 	sgx_status_t status;
 	ms_add_input_t ms;
-	ms.ms_name = (char*)name;
-	ms.ms_len1 = len1;
-	ms.ms_input_i = (char*)input_i;
-	ms.ms_len2 = len2;
+	ms.ms_form_name = (char*)form_name;
+	ms.ms_len_form = len_form;
+	ms.ms_input_name = (char*)input_name;
+	ms.ms_len_input = len_input;
 	ms.ms_sig_form = (uint8_t*)sig_form;
 	ms.ms_sig_form_size = sig_form_size;
 	ms.ms_validate = validate;
@@ -439,7 +474,7 @@ sgx_status_t add_input(sgx_enclave_id_t eid, sgx_status_t* retval, const char* n
 	ms.ms_y = y;
 	ms.ms_height = height;
 	ms.ms_width = width;
-	status = sgx_ecall(eid, 7, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 6, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -456,7 +491,7 @@ sgx_status_t onFocus(sgx_enclave_id_t eid, sgx_status_t* retval, const char* for
 	ms.ms_y = y;
 	ms.ms_width = width;
 	ms.ms_height = height;
-	status = sgx_ecall(eid, 8, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 7, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -465,7 +500,7 @@ sgx_status_t onBlur(sgx_enclave_id_t eid, sgx_status_t* retval)
 {
 	sgx_status_t status;
 	ms_onBlur_t ms;
-	status = sgx_ecall(eid, 9, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 8, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -476,7 +511,7 @@ sgx_status_t form_len(sgx_enclave_id_t eid, uint32_t* retval, const char* formNa
 	ms_form_len_t ms;
 	ms.ms_formName = (char*)formName;
 	ms.ms_formName_len = formName ? strlen(formName) + 1 : 0;
-	status = sgx_ecall(eid, 10, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 9, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -490,7 +525,7 @@ sgx_status_t submit_form(sgx_enclave_id_t eid, sgx_status_t* retval, const char*
 	ms.ms_dest = dest;
 	ms.ms_encr_size = encr_size;
 	ms.ms_gcm_mac = gcm_mac;
-	status = sgx_ecall(eid, 11, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 10, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -504,7 +539,7 @@ sgx_status_t gcm_decrypt(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* p_
 	ms.ms_p_dst = p_dst;
 	ms.ms_p_iv = p_iv;
 	ms.ms_p_in_mac = p_in_mac;
-	status = sgx_ecall(eid, 12, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 11, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -514,7 +549,7 @@ sgx_status_t get_keyboard_chars(sgx_enclave_id_t eid, sgx_status_t* retval, uint
 	sgx_status_t status;
 	ms_get_keyboard_chars_t ms;
 	ms.ms_p_src = p_src;
-	status = sgx_ecall(eid, 13, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 12, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -526,8 +561,18 @@ sgx_status_t test_decryption(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t
 	ms.ms_form = form;
 	ms.ms_form_size = form_size;
 	ms.ms_gcm_mac = gcm_mac;
-	status = sgx_ecall(eid, 14, &ocall_table_isv_enclave, &ms);
+	status = sgx_ecall(eid, 13, &ocall_table_isv_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
+	return status;
+}
+
+sgx_status_t get_http_response(sgx_enclave_id_t eid, char* response, size_t len)
+{
+	sgx_status_t status;
+	ms_get_http_response_t ms;
+	ms.ms_response = response;
+	ms.ms_len = len;
+	status = sgx_ecall(eid, 14, &ocall_table_isv_enclave, &ms);
 	return status;
 }
 

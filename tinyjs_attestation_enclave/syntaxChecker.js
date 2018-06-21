@@ -60,9 +60,18 @@ function parseFormTags() {
 }
 
 function main() {
-  parseScriptTags();
+    if (document.getElementsByTagName("head")[0].hasAttribute("secure")) {
+      chrome.runtime.sendMessage("true");
+      console.log("secure");
+    } 
+    else { 
+      chrome.runtime.sendMessage("false");
+      console.log("insecure");
+    }
+
+  /*parseScriptTags();
   parseFormTags();
-  if (!useEnclave) throw "Incorrect secure tag setup. Enclave will not be used.";
+  if (!useEnclave) throw "Incorrect secure tag setup. Enclave will not be used.";*/
 }
 
 main();

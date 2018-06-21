@@ -97,8 +97,17 @@ uint8_t* attestation_msg_samples[] =
 
 using namespace std;
 
-KeyboardDriver KB("keyboard_test", "");
+KeyboardDriver KB("keyboard_test", "empty");
 ofstream myfile;
+
+void sendMessage(string message) {
+    unsigned int len = message.length();
+    cout  << char((len>>0) & 0xFF)
+    << char((len>>8) & 0xFF)
+    << char((len>>16) & 0xFF)
+    << char((len>>24) & 0xFF)
+    << message << endl;
+}
 
 uint8_t convert(char *target){
     uint8_t number = (int)strtol(target, NULL, 16);
@@ -114,42 +123,12 @@ void hexStrtoBytes(char *char_stream, int stream_len, uint8_t *byte_array){
     }
 }
 
-void sendMessage(string message) {
-
-    
-    //myfile << "Message with length: " << outMsg << endl;
-    unsigned int len = message.length();
-
-    //std::cout.setf(std::ios_base::unitbuf);
-    //cout.write((char *)&outLen, sizeof(unsigned int));
-    //char *bOutLen = reinterpret_cast<char *>(&outLen);
-    //cout << outLen;
-
-    //cout << outMsg;
-    cout  << char((len>>0) & 0xFF)
-    << char((len>>8) & 0xFF)
-    << char((len>>16) & 0xFF)
-    << char((len>>24) & 0xFF)
-    << message << endl;
-
-    // Collect the length of the message
-    /*unsigned int len = message.length();
-    // Now we can output our message
-    len = length;
-    cout << char(len>>0) << char(len>>8) << char(len>>16) << char(len>>24);
-    cout << msg << flush; */
-}
-
 size_t ocall_get_file_size(const char* fname) {
-    printf("checking file size\n");
     std::string name = std::string(fname);
     ifstream file(name, ifstream::in | ifstream:: binary);
-    printf("is good: %d\n", file.good());
     if(file.good()) {
-      printf("here\n");
       file.seekg(0, ios::end);
       int len = file.tellg();
-      printf("%d\n", len);
       file.close();
       return (size_t) len;
     } else {
@@ -168,21 +147,14 @@ void ocall_write_file(const char* fname, const char* data, size_t len) {
 
 void ocall_read_file(const char* fname, char* data, size_t len) {
     std::string name = std::string(fname);
-    printf("reading file\n");
     ifstream file(name, std::ios::binary | std::ios::ate);
-    printf("reading file2\n");
     file.seekg(0, std::ios::beg);
-    printf("reading file3\n");
     file.read(data, len);
-    printf("reading file4\n");
     file.close();
 }
 
 void ocall_print_string(const char *str)
 {
-    /* Proxy/Bridge will check the length and null-terminate
-     * the input string to prevent buffer overflow.
-     */
     myfile << str << endl;;
 
 }
@@ -300,21 +272,11 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 #define SHUTDOWN_EM 8
 #define N_COMMANDS 9
 
-void sendMessage(string message) {
-    unsigned int len = message.length();
-    cout  << char((len>>0) & 0xFF)
-    << char((len>>8) & 0xFF)
-    << char((len>>16) & 0xFF)
-    << char((len>>24) & 0xFF)
-    << message << endl;
-    cout.flush();
-}
-
 /*
 this ivar is for debugging only, it will close the debug
 log after the EM recieves/parses the specified number of commands.
 */
-int eventsUntilCloseLog = 20;
+int eventsUntilCloseLog = 8;
 
 bool runningManager = true;
 pair<string, string> focusInput;
@@ -374,14 +336,15 @@ void addForm(vector<string> argv) {
         uint16_t x = (uint16_t)(stod(argv[i+3], NULL)*SCALE_X);
         uint16_t y = (uint16_t)(stod(argv[i+4], NULL)*SCALE_Y);
         if (DEBUG_MODE) myfile << "\tADD INPUT: " << inputName << " (" << x << "," << y << ") " << endl;
+        if (!(i+5 < argv.size())) myfile << "RUNNING VALIDATION (NOT CURRENTLY IN USE)" << endl;
         add_input(enclave_id, &ret, name.c_str(), name.length()+1, inputName.c_str(), inputName.length()+1,
                     (uint8_t*)(signature.c_str()), signature.length()+1, 
                     (i+5 < argv.size()) ? 0 : 1, x, y, h, w); //ECALL
+                    //0,x,y,h,w);
         if (ret != SGX_SUCCESS) myfile << "!!!add_input ecall FAILED" << endl;
 
 	}
 }
-
 void addScript(string signature, string name) {
 	//TO DO: make ecall for adding a form
   //verification
@@ -408,30 +371,82 @@ void terminateEnclave(string origin) {
     sgx_destroy_enclave(enclave_id);
 	if (DEBUG_MODE) myfile << "TERMINATE enclave with id: " << enclave_id << endl;
 }
-
 void submitHttpReq(string request) {
+
 	//TO DO: needs to forward request to the extension
 	if (DEBUG_MODE) myfile << "sending HTTP request: " << request << endl;
 }
 
+static const std::string base64_chars = 
+             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+             "abcdefghijklmnopqrstuvwxyz"
+             "0123456789+/";
+
+
+static inline bool is_base64(unsigned char c) {
+  return (isalnum(c) || (c == '+') || (c == '/'));
+}
+
+std::string base64_encode(unsigned char const* bytes_to_encode, unsigned int in_len) {
+  std::string ret;
+  int i = 0;
+  int j = 0;
+  unsigned char char_array_3[3];
+  unsigned char char_array_4[4];
+
+  while (in_len--) {
+    char_array_3[i++] = *(bytes_to_encode++);
+    if (i == 3) {
+      char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
+      char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
+      char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
+      char_array_4[3] = char_array_3[2] & 0x3f;
+
+      for(i = 0; (i <4) ; i++)
+        ret += base64_chars[char_array_4[i]];
+      i = 0;
+    }
+  }
+
+  if (i)
+  {
+    for(j = i; j < 3; j++)
+      char_array_3[j] = '\0';
+
+    char_array_4[0] = ( char_array_3[0] & 0xfc) >> 2;
+    char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
+    char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
+
+    for (j = 0; (j < i + 1); j++)
+      ret += base64_chars[char_array_4[j]];
+
+    while((i++ < 3))
+      ret += '=';
+
+  }
+
+  return ret;
+
+}
+
 void handleFormSubmission(string formName) {
-	sgx_status_t re;
-	uint32_t len; 
-    form_len(enclave_id, &len, formName.c_str());
-    uint8_t form_buf[(len*4)] = {0};
-    uint8_t mac[16] = {0};
+  sgx_status_t re;
+  uint32_t len; 
+  form_len(enclave_id, &len, formName.c_str());
+  uint8_t form_buf[(len*4)] = {0};
+  uint8_t mac[16] = {0};
 
-    myfile << "submitting form now!" << endl;
-	submit_form(enclave_id, &re, formName.c_str(), &form_buf[0], len, &mac[0]);
-	myfile << form_buf << endl;
+  myfile << "submitting form now!" << endl;
+  submit_form(enclave_id, &re, formName.c_str(), &form_buf[0], len, &mac[0]);
+  myfile << form_buf << endl;
 
-	string resultString = "{\"msg\" : \"";
-	resultString += std::string((char *)form_buf);
-	resultString += "\"}";
+  string resultString = "{\"form_submit\" : \"";
+  resultString += base64_encode(reinterpret_cast<const unsigned char*>(form_buf), len);
+  resultString += "\"}";
 
-	myfile << "Result: " << resultString << endl;;
+  myfile << "Result: " << resultString << endl;;
 
-	sendMessage(resultString);
+  sendMessage(resultString);
 }
 
 void parseScript(string message) {
@@ -497,6 +512,7 @@ bool parseMessage(string message) {
       addForm(argv);
       break;
       case FORM_SUBMIT:
+      myfile << "REQUESTED FORM SUBMIT" << endl;
       handleFormSubmission(argv[1]);
       break;
       case ADD_SCRIPT:
@@ -572,7 +588,6 @@ void listenForKeyboard() {
 #define _T(x) x
 int main(int argc, char* argv[])
 {
-
     int ret = 0;
     ra_samp_request_header_t *p_msg0_full = NULL;
     ra_samp_response_header_t *p_msg0_resp_full = NULL;
@@ -1169,9 +1184,9 @@ if(argc > 2)
     //printf("init enclave_id: %d\n", enclave_id);
     //printf("testing %d\n", t);
     //printf("testing %d\n", t);
-    run_js(enclave_id, &re, (char*) &code[0], code.length()+1, (uint8_t*)&sig, sig_size);//should fail bc we have not generated a signiture 
-    code = "print(str_data); var x = local_storage_data[\"text\"]; print(x);";
-    run_js(enclave_id, &re, (char*) &code[0], code.length()+1, (uint8_t*)&sig, sig_size);//should fail bc we have not generated a signiture 
+    //run_js(enclave_id, &re, (char*) &code[0], code.length()+1, (uint8_t*)&sig, sig_size);//should fail bc we have not generated a signiture 
+    //code = "print(str_data); var x = local_storage_data[\"text\"]; print(x);";
+    //run_js(enclave_id, &re, (char*) &code[0], code.length()+1, (uint8_t*)&sig, sig_size);//should fail bc we have not generated a signiture 
 
 
     //--------------------------end testing-----------------------------
