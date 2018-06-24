@@ -30,7 +30,7 @@ Go to home/.config/google-chrome/NativeMessagingHosts/examples and run index_sgx
 
 Click on the extension and go to home/.config/google-chrome/NativeMessagingHosts/sgx-browser. You should now have debug_log.txt again with the scripts and forms of index_sgx.html
 
-**Secure Display Rapsberry Pi Setup**
+**Secure Display Raspberry Pi Setup**
 1. Download and install Raspian (we are using version 9, however the the latest
    version should suffice)
 2. Install python 2.7/pip if it is not already installed
@@ -41,17 +41,18 @@ Click on the extension and go to home/.config/google-chrome/NativeMessagingHosts
 4. Clone this repository onto the raspberry pi
 5. Inside the "rpi_display" folder run "python overlay_sever.py"
 
-NOTE: Due to some complications with bluetooth pairing, the first time this is
+NOTE: Due to some complications with Bluetooth pairing, the first time this is
 run with a new hardware, a few extra
 steps must be taken.
 
 Inside Fidelius-trial/tinyjs_attestation_enclave/isv_app/sgx_display/btchannel.cpp,
-"BT_SCAN" must be set to 1 and recompiled. Additionally the Raspberry Pi
-bluetooth must be discoverable, this is accesssible by clicking on the
+"BT_SCAN" must be set to 1 and recompiled. Additionally, the Raspberry Pi
+Bluetooth must be discoverable, this is accessible by clicking on the
 Bluetooth icon in the top right of the screen. If this is done correctly the
-host computer will scan discoverable bluetooth devices and connect to oone with
+host computer will scan discoverable Bluetooth devices and connect to a device with
 the name "raspberrypi". If using a new Raspberry Pi, the Bluetooth address must be updated
 underneath the "BT_SCAN" definition, the Bluetooth address should get printed
 in the debug log when scanning. For future uses BT_SCAN can be set back to 0
 and making the Raspberry Pi discoverable is not necessary.
+
 
