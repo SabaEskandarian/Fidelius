@@ -74,7 +74,7 @@ int BluetoothChannel::channel_open()
     }
   }
  //printf("Could not find the raspberry pi\n");
-  return 0;
+  return -1;
 #else
   sock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
   addr.rc_family = AF_BLUETOOTH;
