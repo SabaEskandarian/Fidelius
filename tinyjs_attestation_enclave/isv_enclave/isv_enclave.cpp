@@ -505,7 +505,7 @@ void printForm(form f){
     for(std::map<std::string, input>::const_iterator it = f.inputs.begin();
     it != f.inputs.end(); ++it)
     {
-        printf_enc("input name: %s\n", it->first);
+        printf_enc("input name: %s\n", it->first.c_str());
     }
 }
 
@@ -619,7 +619,7 @@ sgx_status_t add_form(const char* name, size_t len,
         new_form.x = x;
         new_form.y = y;
         new_form.validated = false;
-        printf_enc("added new form: %s\n", eName);
+        printf_enc("added new form: %s\n", eName.c_str());
         input new_input;
         new_input.value = eName;
         new_input.x = 10;
@@ -647,7 +647,7 @@ sgx_status_t add_input(const char * form_name, size_t len_form, const char* inpu
     std::string formName = copyString(form_name, len_form);
     std::string inputName = copyString(input_name, len_input);
     if(forms.count(formName) == 0) {
-        printf_enc("ENCLAVE: form named: %s not found", formName);
+        printf_enc("ENCLAVE: form named: %s not found", formName.c_str());
         return SGX_ERROR_INVALID_PARAMETER; //error if form does not exist
     } else {  
         std::map<std::string, form>::iterator it;
@@ -660,7 +660,7 @@ sgx_status_t add_input(const char * form_name, size_t len_form, const char* inpu
 
 
         if(f.inputs.count(inputName) > 0) {
-            printf_enc("ENCLAVE: tried to add already existing input named %s to form %s", inputName, formName);
+            printf_enc("ENCLAVE: tried to add already existing input named %s to form %s", inputName.c_str(), formName.c_str());
             return SGX_ERROR_INVALID_PARAMETER; //error if input already exists
         } else {
             input new_input;
@@ -717,8 +717,8 @@ sgx_status_t onFocus(const char* formName, const char* inputName,
 
   curForm = f;
   curInput = it2->second;
-  printf_enc("INPUT: Input name = %s which should be the same as: %s", inputName, curInput.name);
-  printf_enc("INPUT: Input Field Value = %s", curInput.value);
+  printf_enc("INPUT: Input name = %s which should be the same as: %s", inputName, curInput.name.c_str());
+  printf_enc("INPUT: Input Field Value = %s", curInput.value.c_str());
   printf_enc("INPUT: Input Field X = %d", curInput.x);
   printf_enc("INPUT: Input Field Y = %d", curInput.y);
   printf_enc("INPUT: Input Field Width = %d", curInput.width);
@@ -751,12 +751,12 @@ sgx_status_t submit_form(const char* formName, uint8_t* dest, uint32_t encr_size
   std::map<std::string, form>::iterator it;
   it = forms.find((std::string) formName);
   if(it == forms.end()) {
-    printf_enc("SUBMIT reeee didnt find requested form");
+    printf_enc("SUBMIT didnt find requested form");
     return SGX_ERROR_INVALID_PARAMETER;
   }
   form f = it->second;
   if(!f.validated) {
-    printf_enc("SUBMIT reeee form not validated");
+    printf_enc("SUBMIT form not validated");
     return SGX_ERROR_INVALID_PARAMETER;
   }
 
@@ -815,7 +815,7 @@ void js_update_form(CScriptVar *v, void *userdata) {
     std::string inputName = v->getParameter("inputName")->getString();
     std::string val = v->getParameter("val")->getString();
     forms[formName].inputs[inputName].value = val;
-    printf_enc("set %s to %s\n", inputName, val);
+    printf_enc("set %s to %s\n", inputName.c_str(), val.c_str());
 }
 
 
@@ -831,7 +831,7 @@ void js_make_http_request(CScriptVar *v, void* userdata) {
     std::string post_data = v->getParameter("postData")->getString();
     std::string request_data = method + url + headers + post_data;
     if(url != origin) {
-        printf_enc("Error: invalid origin %s", url);
+        printf_enc("Error: invalid origin %s", url.c_str());
         return;
     }
 
@@ -1053,13 +1053,13 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     else{
         curInput.value += p_char[0];
     }
-    printf_enc("KEYBOARD: Input NAME = %s", curInput.name);
+    printf_enc("KEYBOARD: Input NAME = %s", curInput.name.c_str());
     printf_enc("KEYBOARD: Input Field X = %d", curInput.x);
     printf_enc("KEYBOARD: Input Field Y = %d", curInput.y);
     printf_enc("KEYBOARD: Input Field Width = %d", curInput.width);
     printf_enc("KEYBOARD: Input Field Height= %d", curInput.height);
     printf_enc("KEYBOARD: Char obtained: %x", p_char[0] );    
-    printf_enc("KEYBOARD: new value for input = %s", curInput.value);
+    printf_enc("KEYBOARD: new value for input = %s", curInput.value.c_str());
     forms[curForm.name].inputs[curInput.name] = curInput;
     return status;
 }

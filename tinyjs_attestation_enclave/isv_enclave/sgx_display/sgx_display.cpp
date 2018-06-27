@@ -40,7 +40,7 @@ void printFormDisplay(form f){
     for(std::map<std::string, input>::const_iterator it = f.inputs.begin();
     it != f.inputs.end(); ++it)
     {
-        printf_enc("input name: %s\n", it->first);
+        printf_enc("input name: %s\n", it->first.c_str());
     }
 }
 
@@ -107,8 +107,8 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
        it != form.inputs.end(); it++)
   {
     input field = it->second;
-    printf_enc("DISPLAY: Input Field name = %s and should be the same as %s", it->first, field.name);
-    printf_enc("DISPLAY: Input Field Value = %s", field.value);
+    printf_enc("DISPLAY: Input Field name = %s and should be the same as %s", it->first.c_str(), field.name.c_str());
+    printf_enc("DISPLAY: Input Field Value = %s", field.value.c_str());
     printf_enc("DISPLAY: Input Field X = %d", field.x);
     printf_enc("DISPLAY: Input Field Y = %d", field.y);
     printf_enc("DISPLAY: Input Field Width = %d", field.width);
