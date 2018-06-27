@@ -55,10 +55,10 @@ function onFocus() {
     	xCoord = elemRect.left - bodyRect.left;
     	var height = currentFocus.clientHeight;
     	var width = currentFocus.clientWidth;
-		//var focusInfo = {formName, inputName, xCoord, yCoord};
+		var focusInfo = {formName, inputName, xCoord, yCoord};
 		//formPort.postMessage("The following element has just been focused on:\n" + JSON.stringify(focusInfo));
-		//console.log("The following element has just been focused on:");
-		//console.log(focusInfo);
+		console.log("The following element has just been focused on:");
+		console.log(focusInfo);
 		var m = "" + ON_FOCUS + '\n' + formName + '\n' + inputName + '\n' + xCoord + '\n' + yCoord + '\n' + height + '\n' + width + '\n';
 		formPort.postMessage(m);
 
@@ -81,8 +81,8 @@ function onFocusOut() {
 		var focusInfo = {formName, inputName, xCoord, yCoord};
 		currentFocus = null;
 		//formPort.postMessage("The following element has just been focused on:\n" + JSON.stringify(focusInfo));
-		//console.log("The following element has just been unfocused:");
-		//console.log(focusInfo);
+		console.log("The following element has just been unfocused:");
+		console.log(focusInfo);
 		var m = "" + ON_BLUR + '\n' + formName + '\n' + inputName + '\n' + xCoord + '\n' + yCoord + '\n';
 		formPort.postMessage(m);
 	}

@@ -336,7 +336,7 @@ void addForm(vector<string> argv) {
         uint16_t x = (uint16_t)(stod(argv[i+3], NULL)*SCALE_X);
         uint16_t y = (uint16_t)(stod(argv[i+4], NULL)*SCALE_Y);
         if (DEBUG_MODE) myfile << "\tADD INPUT: " << inputName << " (" << x << "," << y << ") " << endl;
-        if (!(i+5 < argv.size())) myfile << "RUNNING VALIDATION (NOT CURRENTLY IN USE)" << endl;
+        if (!(i+5 < argv.size())) myfile << "RUNNING VALIDATION" << endl;
         add_input(enclave_id, &ret, name.c_str(), name.length()+1, inputName.c_str(), inputName.length()+1,
                     (uint8_t*)(signature.c_str()), signature.length()+1, 
                     (i+5 < argv.size()) ? 0 : 1, x, y, h, w); //ECALL
