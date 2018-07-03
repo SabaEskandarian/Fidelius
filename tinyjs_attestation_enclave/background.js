@@ -10,7 +10,6 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
 });
 
 function start() {
-  alert("start()");
 
   var nativePort = chrome.runtime.connectNative("com.google.chrome.fidelius.echo");
 

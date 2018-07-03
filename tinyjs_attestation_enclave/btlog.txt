@@ -1,0 +1,11 @@
+trying to open channel
+bt scan set to 1
+sock created
+trying to run hci_inquiry 0
+passed hci_inquiry
+found 3 devices, searching for rpi...
+name: 
+checking the 0th device: [unknown]
+name: 
+checking the 1th device: raspberrypi
+connect exited normally

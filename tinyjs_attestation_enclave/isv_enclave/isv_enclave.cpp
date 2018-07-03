@@ -682,9 +682,9 @@ sgx_status_t add_input(const char * form_name, size_t len_form, const char* inpu
                 }
                 else {
                     // delete form, return failure
-                    printf_enc("VALIDATION FAILED, DELETING FORM");
+                    printf_enc("FORM SIGNATURE DOES NOT MATCH");
                     f.validated = true;
-                    forms.erase((std::string) formName);
+                    //forms.erase((std::string) formName);
                     return SGX_ERROR_INVALID_PARAMETER;
                 }
             }             

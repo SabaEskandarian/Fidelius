@@ -1,0 +1,324 @@
+hello from the enclave manager!
+
+CREATED THREAD
+THREAD initialized connection
+THREAD initialized connection
+!
+
+CREATED THREAD
+js length: 252
+added new form: loginform
+
+ADD FORM with name: loginform signature: bdc0269d7433bdf7728ed7294f94a279ae928fd4f7513e2b7ac95184a314cbf2b72c8f216e66e0edb832becf8df87c86f4fe7b5c516edb74beaa797c6c032
+	ADD INPUT: username (73,0) 
+	ADD INPUT: password (69,21) 
+RUNNING VALIDATION
+# elements in form: 2
+
+input name: password
+
+input name: username
+
+VALIDATING: {"formname": "loginform", "password": "","username": "",}
+FORM SIGNATURE DOES NOT MATCH
+!!!add_input ecall FAILED
+
+
+js length: 55
+FOCUS on form: loginform input: username at: 73.2969, 58.4375 width: 169 height: 17
+INPUT: FORM NAME = loginform
+INPUT: Input name = username which should be the same as: username
+INPUT: Input Field Value = 
+INPUT: Input Field X = 73
+INPUT: Input Field Y = 0
+INPUT: Input Field Width = 169
+INPUT: Input Field Height= 17
+
+
+js length: 46
+BLUR on form: loginform input: username at: 73.2969, 58.4375
+
+
+js length: 55
+FOCUS on form: loginform input: username at: 73.2969, 58.4375 width: 169 height: 17
+INPUT: FORM NAME = loginform
+INPUT: Input name = username which should be the same as: username
+INPUT: Input Field Value = 
+INPUT: Input Field X = 73
+INPUT: Input Field Y = 0
+INPUT: Input Field Width = 169
+INPUT: Input Field Height= 17
+
+
+js length: 46
+BLUR on form: loginform input: username at: 73.2969, 58.4375
+
+
+BT CONNECTED
+js length: 55
+FOCUS on form: loginform input: username at: 73.2969, 58.4375 width: 169 height: 17
+INPUT: FORM NAME = loginform
+INPUT: Input name = username which should be the same as: username
+INPUT: Input Field Value = 
+INPUT: Input Field X = 73
+INPUT: Input Field Y = 0
+INPUT: Input Field Width = 169
+INPUT: Input Field Height= 17
+
+
+DISPLAY: BEGIN
+
+DISPLAY: SETTING HEADER
+
+DISPLAY: READING FORMS
+
+# elements in form: 1
+
+input name: username
+
+NUMBER OF INPUTS: 1
+DISPLAY: FORM ORGIN = https://stanford.edu/submit
+DISPLAY: ADDING FIELD BITMAPS
+
+DISPLAY: Input Field name = username and should be the same as username
+DISPLAY: Input Field Value = 
+DISPLAY: Input Field X = 73
+DISPLAY: Input Field Y = 0
+DISPLAY: Input Field Width = 169
+DISPLAY: Input Field Height= 17
+
+KEYB: trying to get encrypted input
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+KEYBOARD: Input NAME = username
+KEYBOARD: Input Field X = 73
+KEYBOARD: Input Field Y = 0
+KEYBOARD: Input Field Width = 169
+KEYBOARD: Input Field Height= 17
+KEYBOARD: Char obtained: 61
+KEYBOARD: new value for input = a
+DISPLAY: BEGIN
+
+DISPLAY: SETTING HEADER
+
+DISPLAY: READING FORMS
+
+# elements in form: 1
+
+input name: username
+
+NUMBER OF INPUTS: 1
+DISPLAY: FORM ORGIN = https://stanford.edu/submit
+DISPLAY: ADDING FIELD BITMAPS
+
+DISPLAY: Input Field name = username and should be the same as username
+DISPLAY: Input Field Value = a
+DISPLAY: Input Field X = 73
+DISPLAY: Input Field Y = 0
+DISPLAY: Input Field Width = 169
+DISPLAY: Input Field Height= 17
+a
+KEYB: trying to get encrypted input
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+KEYBOARD: Input NAME = username
+KEYBOARD: Input Field X = 73
+KEYBOARD: Input Field Y = 0
+KEYBOARD: Input Field Width = 169
+KEYBOARD: Input Field Height= 17
+KEYBOARD: Char obtained: 61
+KEYBOARD: new value for input = aa
+DISPLAY: BEGIN
+
+DISPLAY: SETTING HEADER
+
+DISPLAY: READING FORMS
+
+# elements in form: 1
+
+input name: username
+
+NUMBER OF INPUTS: 1
+DISPLAY: FORM ORGIN = https://stanford.edu/submit
+DISPLAY: ADDING FIELD BITMAPS
+
+DISPLAY: Input Field name = username and should be the same as username
+DISPLAY: Input Field Value = aa
+DISPLAY: Input Field X = 73
+DISPLAY: Input Field Y = 0
+DISPLAY: Input Field Width = 169
+DISPLAY: Input Field Height= 17
+aa
+KEYB: trying to get encrypted input
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+KEYBOARD: Input NAME = username
+KEYBOARD: Input Field X = 73
+KEYBOARD: Input Field Y = 0
+KEYBOARD: Input Field Width = 169
+KEYBOARD: Input Field Height= 17
+KEYBOARD: Char obtained: 61
+KEYBOARD: new value for input = aaa
+DISPLAY: BEGIN
+
+DISPLAY: SETTING HEADER
+
+DISPLAY: READING FORMS
+
+# elements in form: 1
+
+input name: username
+
+NUMBER OF INPUTS: 1
+DISPLAY: FORM ORGIN = https://stanford.edu/submit
+DISPLAY: ADDING FIELD BITMAPS
+
+DISPLAY: Input Field name = username and should be the same as username
+DISPLAY: Input Field Value = aaa
+DISPLAY: Input Field X = 73
+DISPLAY: Input Field Y = 0
+DISPLAY: Input Field Width = 169
+DISPLAY: Input Field Height= 17
+aaa
+KEYB: trying to get encrypted input
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+KEYBOARD: Input NAME = username
+KEYBOARD: Input Field X = 73
+KEYBOARD: Input Field Y = 0
+KEYBOARD: Input Field Width = 169
+KEYBOARD: Input Field Height= 17
+KEYBOARD: Char obtained: 61
+KEYBOARD: new value for input = aaaa
+DISPLAY: BEGIN
+
+DISPLAY: SETTING HEADER
+
+DISPLAY: READING FORMS
+
+# elements in form: 1
+
+input name: username
+
+NUMBER OF INPUTS: 1
+DISPLAY: FORM ORGIN = https://stanford.edu/submit
+DISPLAY: ADDING FIELD BITMAPS
+
+DISPLAY: Input Field name = username and should be the same as username
+DISPLAY: Input Field Value = aaaa
+DISPLAY: Input Field X = 73
+DISPLAY: Input Field Y = 0
+DISPLAY: Input Field Width = 169
+DISPLAY: Input Field Height= 17
+aaaa
+KEYB: trying to get encrypted input
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+KEYBOARD: Input NAME = username
+KEYBOARD: Input Field X = 73
+KEYBOARD: Input Field Y = 0
+KEYBOARD: Input Field Width = 169
+KEYBOARD: Input Field Height= 17
+KEYBOARD: Char obtained: 61
+KEYBOARD: new value for input = aaaaa
+DISPLAY: BEGIN
+
+DISPLAY: SETTING HEADER
+
+DISPLAY: READING FORMS
+
+# elements in form: 1
+
+input name: username
+
+NUMBER OF INPUTS: 1
+DISPLAY: FORM ORGIN = https://stanford.edu/submit
+DISPLAY: ADDING FIELD BITMAPS
+
+DISPLAY: Input Field name = username and should be the same as username
+DISPLAY: Input Field Value = aaaaa
+DISPLAY: Input Field X = 73
+DISPLAY: Input Field Y = 0
+DISPLAY: Input Field Width = 169
+DISPLAY: Input Field Height= 17
+aaaaa
+KEYB: trying to get encrypted input
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+KEYBOARD: Input NAME = username
+KEYBOARD: Input Field X = 73
+KEYBOARD: Input Field Y = 0
+KEYBOARD: Input Field Width = 169
+KEYBOARD: Input Field Height= 17
+KEYBOARD: Char obtained: 61
+KEYBOARD: new value for input = aaaaaa
+DISPLAY: BEGIN
+
+DISPLAY: SETTING HEADER
+
+DISPLAY: READING FORMS
+
+# elements in form: 1
+
+input name: username
+
+NUMBER OF INPUTS: 1
+DISPLAY: FORM ORGIN = https://stanford.edu/submit
+DISPLAY: ADDING FIELD BITMAPS
+
+DISPLAY: Input Field name = username and should be the same as username
+DISPLAY: Input Field Value = aaaaaa
+DISPLAY: Input Field X = 73
+DISPLAY: Input Field Y = 0
+DISPLAY: Input Field Width = 169
+DISPLAY: Input Field Height= 17
+aaaaaa
+js length: 46
+BLUR on form: loginform input: username at: 73.2969, 58.4375
+
+
+KEYB: trying to get encrypted input
+got encrypted input
+KEYB BUFFER: ‡a®Ô”‘k√¡r.∞P›©E
+e061a8efd3d46bc37fc1722eb050dda945000000000000000000000000
+Executing gcm_decrypt function from enclave...
+Decrypted Characters(in Enclave):61
+Status_decrypt: 0
+
+KEYBOARD: Input NAME = 
+KEYBOARD: Input Field X = 0
+KEYBOARD: Input Field Y = 0
+KEYBOARD: Input Field Width = 0
+KEYBOARD: Input Field Height= 0
+KEYBOARD: Char obtained: 61
+KEYBOARD: new value for input = a
