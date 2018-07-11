@@ -36,3 +36,12 @@ pi$ screen -dr
 screen$ cd Fidelius/rpi_display/
 screen$ python comm_server.py
 ```
+
+## No internet on the raspberry pi
+
+Most likely there is a routing rule that forward internet traffic to our router. To remove this rule use:
+
+```
+pi$ cd Fidelius/rpi_display/
+pi$ ./fix_routes.sh
+```
