@@ -31,7 +31,7 @@ From the PC, open an SSH connection to the RPI:
 $ ssh pi@192.168.0.100
 pi$ screen -dr
 
-[press CTRL+A N to move to the right shell]
+[press CTRL+A N to move to next shell, if needed]
 
 screen$ cd Fidelius/rpi_display/
 screen$ python comm_server.py
