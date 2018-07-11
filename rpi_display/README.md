@@ -1,17 +1,38 @@
-# What to do when power-cycling RPI
-
+## How to start the overlay server 
 ```
 $ screen
 
 [inside screen]
 screen$ cd Fidelius/rpi_display/
-screen$ ./start
+screen$ ./start.sh
 ```
-At this point, the overlay server should show the desktop of our PC. From the PC, connect to the RPI using SSH and:
+
+## How to start the comm server
+
+### Case 1: After powercycling
+
+From the PC, open an SSH connection to the RPI:
 
 ```
 $ ssh pi@192.168.0.100
 pi$ screen -dr
-pi$ cd Fidelius/rpi_display/
-pi$ python comm_server.py
+
+[press CTRL+A C to spawn a new bash inside the screen session]
+
+screen$ cd Fidelius/rpi_display/
+screen$ python comm_server.py
+```
+
+### Case 2: General case
+
+From the PC, open an SSH connection to the RPI:
+
+```
+$ ssh pi@192.168.0.100
+pi$ screen -dr
+
+[press CTRL+A N to move to the right shell]
+
+screen$ cd Fidelius/rpi_display/
+screen$ python comm_server.py
 ```
