@@ -158,8 +158,8 @@ function getInputCoords(form, input) {
     elemRect = input.getBoundingClientRect();
     formRect = form.getBoundingClientRect();
 
-	yCoord = elemRect.top - formRect.top;
-	xCoord = elemRect.left - formRect.left;
+	yCoord = (elemRect.top - formRect.top);
+	xCoord = (elemRect.left - formRect.left);
 
 	var height = input.clientHeight;
 	var width = input.clientWidth;
@@ -225,7 +225,7 @@ function parseFormTags() {
 
 		formX = window.screenX + formRect.left;
 		formY = window.screenY + formRect.top + window.outerHeight - window.innerHeight;
-
+		console.log("Form x,y: " + formX + ", " + formY);
 		formString += formX + "\n";
 		formString += formY + "\n";
 		getInputs(form);

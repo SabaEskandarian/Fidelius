@@ -15,8 +15,8 @@
 /* Setting this to 1 will cause channel_open to scan discoverable bluetooth
  * devices for one with a name "raspberrypi". Setting this to 0 uses the
  * hardcoded bluetooth address defined as PI_ADDR */
-#define BT_SCAN 1
-#define PI_ADDR "A0:C5:89:4A:67:F7"
+#define BT_SCAN 0
+#define PI_ADDR "00:1A:7D:DA:71:13" //B8:27:EB:1C:41:F8"
 
 /* Bluetooth code modified from
  * https://people.csail.mit.edu/albert/bluez-intro/ */
@@ -25,9 +25,10 @@
  *
  * returns: 0 if successful, -1 otherwise
  */
+std::ofstream log;
+int packetNum = 0;
 int BluetoothChannel::channel_open()
-{
-  std::ofstream log;
+{  
   log.open("btlog.txt");
   log << "trying to open channel" << std::endl;
   inquiry_info *ii = NULL;
@@ -124,22 +125,23 @@ int BluetoothChannel::channel_open()
 int BluetoothChannel::channel_send(char * buffer, int len)
 {
   int resp = write(sock, buffer, len);
- //printf("Exp send len: %d\n", len);
- //printf("Actual send len: %d\n", resp);
+ log << "send len: " << len << std::endl;
+ log << packetNum << "th packet sent, write() returned " << resp << std::endl;
+ packetNum++;
   if (resp == -1)
   {
-   //printf("Reopenning connection.\n");
+   log << "Reopenning connection." << std::endl;
     if (channel_open() == -1)
     {
-     //printf("Failed reopenning connection.\n");
+     log << "Failed reopenning connection" << std::endl;
       return -1;
     }
     else
     {
-     //printf("Reopened connection.\n");
+      log << "Reopened connection." << std::endl;
       int resp = write(sock, buffer, len);
-     //printf("Exp send len: %d\n", len);
-     //printf("Actual send len: %d\n", resp);
+      log << "Exp send len: " << len << std::endl;
+      log << "Actual send len: " << resp << std::endl;
       return resp;
     }
   }

@@ -501,11 +501,11 @@ std::string origin = "";
     and each input field's name
 */
 void printForm(form f){
-    printf_enc("# elements in form: %d\n", f.inputs.size());
+    printf_enc("# elements in form: %d", f.inputs.size());
     for(std::map<std::string, input>::const_iterator it = f.inputs.begin();
     it != f.inputs.end(); ++it)
     {
-        printf_enc("input name: %s\n", it->first.c_str());
+        printf_enc("input name: %s", it->first.c_str());
     }
 }
 
@@ -572,7 +572,7 @@ sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
     sgx_status_t sample_ret = sgx_ecc256_open_context(&ecc_handle);
     if(SGX_SUCCESS != sample_ret)
     {
-        printf_enc("\nError, cannot get ECC context\n");
+        printf_enc("\nError, cannot get ECC context");
     }
     uint8_t result;
     sgx_sha256_hash_t hash;
@@ -619,7 +619,7 @@ sgx_status_t add_form(const char* name, size_t len,
         new_form.x = x;
         new_form.y = y;
         new_form.validated = false;
-        printf_enc("added new form: %s\n", eName.c_str());
+        printf_enc("added new form: %s (%d,%d)", eName.c_str(), x, y);
         input new_input;
         new_input.value = eName;
         new_input.x = 10;
@@ -685,7 +685,7 @@ sgx_status_t add_input(const char * form_name, size_t len_form, const char* inpu
                     printf_enc("FORM SIGNATURE DOES NOT MATCH");
                     f.validated = true;
                     //forms.erase((std::string) formName);
-                    return SGX_ERROR_INVALID_PARAMETER;
+                    //return SGX_ERROR_INVALID_PARAMETER;
                 }
             }             
             it->second = f;
@@ -712,17 +712,17 @@ sgx_status_t onFocus(const char* formName, const char* inputName,
     printf_enc("INPUT: invalid inputname: %s", inputName);
     return SGX_ERROR_INVALID_PARAMETER;
   }
-    printf_enc("INPUT: FORM NAME = %s", it->first.c_str());
+  //printf_enc("INPUT: FORM NAME = %s", it->first.c_str());
 
 
   curForm = f;
   curInput = it2->second;
-  printf_enc("INPUT: Input name = %s which should be the same as: %s", inputName, curInput.name.c_str());
-  printf_enc("INPUT: Input Field Value = %s", curInput.value.c_str());
-  printf_enc("INPUT: Input Field X = %d", curInput.x);
-  printf_enc("INPUT: Input Field Y = %d", curInput.y);
-  printf_enc("INPUT: Input Field Width = %d", curInput.width);
-  printf_enc("INPUT: Input Field Height= %d", curInput.height);
+  //printf_enc("INPUT: Input name = %s which should be the same as: %s", inputName, curInput.name.c_str());
+  //printf_enc("INPUT: Input Field Value = %s", curInput.value.c_str());
+  //printf_enc("INPUT: Input Field X = %d", curInput.x);
+  //printf_enc("INPUT: Input Field Y = %d", curInput.y);
+  //printf_enc("INPUT: Input Field Width = %d", curInput.width);
+  //printf_enc("INPUT: Input Field Height= %d", curInput.height);
   return SGX_SUCCESS;
 }
 
@@ -1053,20 +1053,20 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     else{
         curInput.value += p_char[0];
     }
-    printf_enc("KEYBOARD: Input NAME = %s", curInput.name.c_str());
-    printf_enc("KEYBOARD: Input Field X = %d", curInput.x);
-    printf_enc("KEYBOARD: Input Field Y = %d", curInput.y);
-    printf_enc("KEYBOARD: Input Field Width = %d", curInput.width);
-    printf_enc("KEYBOARD: Input Field Height= %d", curInput.height);
-    printf_enc("KEYBOARD: Char obtained: %x", p_char[0] );    
-    printf_enc("KEYBOARD: new value for input = %s", curInput.value.c_str());
+    //printf_enc("KEYBOARD: Input NAME = %s", curInput.name.c_str());
+    //printf_enc("KEYBOARD: Input Field X = %d", curInput.x);
+    //printf_enc("KEYBOARD: Input Field Y = %d", curInput.y);
+    //printf_enc("KEYBOARD: Input Field Width = %d", curInput.width);
+    //printf_enc("KEYBOARD: Input Field Height= %d", curInput.height);
+    //printf_enc("KEYBOARD: Char obtained: %x", p_char[0] );    
+    //printf_enc("KEYBOARD: new value for input = %s", curInput.value.c_str());
     forms[curForm.name].inputs[curInput.name] = curInput;
     return status;
 }
 
 sgx_status_t gcm_decrypt(uint8_t *p_src, uint32_t src_len, uint8_t *p_dst, uint8_t *p_iv,  sgx_aes_gcm_128bit_tag_t *p_in_mac){
     sgx_status_t status;
-    printf_enc("Executing gcm_decrypt function from enclave...");
+    //printf_enc("Executing gcm_decrypt function from enclave...");
     const sgx_aes_gcm_128bit_key_t p_key = {
          0x24, 0xa3, 0xe5, 0xad, 0x48, 0xa7, 0xa6, 0xb1,
          0x98, 0xfe, 0x35, 0xfb, 0xe1, 0x6c, 0x66, 0x85
@@ -1074,9 +1074,9 @@ sgx_status_t gcm_decrypt(uint8_t *p_src, uint32_t src_len, uint8_t *p_dst, uint8
     
     status = sgx_rijndael128GCM_decrypt(&p_key,p_src, src_len, p_dst, p_iv, 12, NULL, 0, p_in_mac);
     for (int i=0; i<src_len; i++){
-        printf_enc("Decrypted Characters(in Enclave):%x", p_dst[i]);
+        //printf_enc("Decrypted Characters(in Enclave):%x", p_dst[i]);
     }
     
-    printf_enc("Status_decrypt: %x\n", status);
+    //printf_enc("Status_decrypt: %x\n", status);
     return status;
 }

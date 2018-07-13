@@ -80,14 +80,19 @@
 // can use pre-generated messages to verify the generation of
 // messages and the information flow.
 #include "sample_messages.h"
+#include <chrono>
 
 
+
+typedef std::chrono::high_resolution_clock::time_point TimeVar;
+#define duration(a) std::chrono::duration_cast<std::chrono::nanoseconds>(a).count()
+#define timeNow() std::chrono::high_resolution_clock::now()
 #define ENCLAVE_PATH "isv_enclave.signed.so"
 
 sgx_enclave_id_t enclave_id;
 
-double SCALE_X = 1.0;// 1920.0/1280;
-double SCALE_Y = 1.0;// 1080.0/720;
+double SCALE_X = 1;
+double SCALE_Y = 1;
 
 uint8_t* msg1_samples[] = { msg1_sample1, msg1_sample2 };
 uint8_t* msg2_samples[] = { msg2_sample1, msg2_sample2 };
@@ -97,7 +102,7 @@ uint8_t* attestation_msg_samples[] =
 
 using namespace std;
 
-KeyboardDriver KB("keyboard_test", "empty");
+KeyboardDriver KB("/dev/ttyACM0", "/dev/ttyACM1");
 ofstream myfile;
 
 void sendMessage(string message) {
@@ -276,7 +281,7 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 this ivar is for debugging only, it will close the debug
 log after the EM recieves/parses the specified number of commands.
 */
-int eventsUntilCloseLog = 8;
+int eventsUntilCloseLog = 40;
 
 bool runningManager = true;
 pair<string, string> focusInput;
@@ -318,12 +323,13 @@ void handleOnFocus(string formName, string inputName, double x, double y, double
 
 void addForm(vector<string> argv) {
 	//TO DO: make ecall for adding a form
-    sgx_status_t ret;
+  sgx_status_t ret;
 	string name = argv[1];
 	string signature = argv[2];
     string origin = argv[3];
     uint16_t formX = (uint16_t)(stod(argv[4], NULL)*SCALE_X);
     uint16_t formY = (uint16_t)(stod(argv[5], NULL)*SCALE_Y);
+    myfile << "ADD FORM (x,y): (" << formX << "," << formY << ")" << endl; 
     add_form(enclave_id, &ret, name.c_str(), name.length()+1, 
         origin.c_str(), origin.length()+1, formX, formY); //ECALL
     if (ret != SGX_SUCCESS) myfile << "!!!add_form ecall FAILED" << endl;
@@ -333,8 +339,10 @@ void addForm(vector<string> argv) {
         string inputName = argv[i];
         uint16_t w = (uint16_t)(stod(argv[i+1], NULL)*SCALE_X);
         uint16_t h = (uint16_t)(stod(argv[i+2], NULL)*SCALE_Y);
-        uint16_t x = (uint16_t)(stod(argv[i+3], NULL)*SCALE_X);
+        int16_t x = (uint16_t)(stod(argv[i+3], NULL)*SCALE_X);
         uint16_t y = (uint16_t)(stod(argv[i+4], NULL)*SCALE_Y);
+        //uint16_t x = 0;
+        //uint16_t y = 0;
         if (DEBUG_MODE) myfile << "\tADD INPUT: " << inputName << " (" << x << "," << y << ") " << endl;
         if (!(i+5 < argv.size())) myfile << "RUNNING VALIDATION" << endl;
         add_input(enclave_id, &ret, name.c_str(), name.length()+1, inputName.c_str(), inputName.length()+1,
@@ -534,41 +542,56 @@ bool parseMessage(string message) {
   return true;
 }
 
+
+
 void listenForKeyboard() {
+  ofstream sockFile("clientSocketData.bin", ios::binary);
+	int numPacketsSent = 0;
     myfile << "CREATED THREAD" << endl;
     BluetoothChannel connection;
-    myfile << "THREAD initialized connection" << endl; 
+    TimeVar connectionStart = timeNow();
     if (connection.channel_open() < 0) {
         myfile << "FAILED BT CONNECT" << endl;
         myfile.close();
         return;
     }
-    myfile << "BT CONNECTED" << endl;
+    myfile << "BT CONNECTED, time elapsed: " << duration(timeNow() - connectionStart) << endl;
     myfile.flush();
     uint8_t keyboardBuff[58] = {0};
     while(true) {
         unique_lock<mutex> lk(keyboard_mutex);
         cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
+        TimeVar btsendStart = timeNow();
         uint8_t outBuff[524288];
         uint32_t out_len;
         create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
+        sockFile.write((char *)outBuff, out_len);
+
         if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
-            myfile << "DISPLAY: BT FAILED TO SEND" << endl;
+            myfile << "BT FAILED TO SEND PACKET\n" << endl;
+        } else {
+          myfile << "BT SENT PACKET time elapsed: " << duration(timeNow() - btsendStart) << " num packets sent: " << numPacketsSent << endl << endl;
+        	numPacketsSent++;
+        	
         }
-        myfile << "KEYB: trying to get encrypted input" << endl;
+        //myfile << "KEYBOARD: trying to get encrypted input" << endl;
+        TimeVar kbgetStart = timeNow();
         int enc_bytes = KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
         if (enc_bytes <= 0) {
-            myfile << "TIMEOUT on encrypted input" << endl;
+            //myfile << "TIMEOUT on encrypted input" << endl;
         }
         else
         {
-            myfile << "got encrypted input" << endl;
+            //myfile << "KEYBOARD: got encrypted input, time elapsed: " << duration(timeNow() - kbgetStart) << endl;
             uint8_t bytebuff[29];
             hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
             sgx_status_t ret;
-            myfile << "KEYB BUFFER: " << bytebuff << endl;
-            myfile << keyboardBuff << endl;
+            //myfile << "KEYBOARD BUFFER: " << bytebuff << endl;
+            //myfile << keyboardBuff << endl;
+
+            TimeVar kbsendStart = timeNow();
             get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
+            //myfile << "KEYBOARD sent to enclave, time elapsed: " << duration(timeNow() - kbsendStart) << endl;
         }
     }
     uint32_t out_len;
