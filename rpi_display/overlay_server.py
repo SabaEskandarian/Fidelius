@@ -1,3 +1,4 @@
+#!/usr/bin/python2.7
 import io
 import time
 import picamera
@@ -9,6 +10,7 @@ import signal
 import socket
 import os
 import pickle
+import time
 from enum import Enum
 from struct import *
 from PIL import Image
@@ -31,6 +33,7 @@ def get_conn_comm():
 
 if __name__ == "__main__":
 
+    render_times = open("render_times.csv", 'w+')
     camera = None
     srv_sock, conn = None, None
     def gentle_shutdown(*args):
@@ -82,6 +85,7 @@ if __name__ == "__main__":
             
             
             # Create a new canvas for overlays
+            render_times.write("rendering overlay,%.9f\n" % (time.time()*1000))
             pad = Image.new('RGBA', (
                 ((1280 +31) // 32) * 32,
                 ((720 +15) // 16) * 16,

@@ -30,6 +30,8 @@ OP_ADD_OVERLAY = 1
 OP_REMOVE_OVERLAY = 2
 OP_CLEAR_OVERLAYS = 3
 
+
+
 def init_bluetooth():
     server_sock=BluetoothSocket( RFCOMM )
     server_sock.bind(('',PORT_ANY))
@@ -40,18 +42,26 @@ def init_bluetooth():
     logging.debug('Accepted connection from {}'.format(client_info))
     return server_sock, client_sock
 
+def get_data_from_client():
+    buffer = []
+    buffer = client_sock.recv(1024)
+    outputFile.write(bytearray(buffer))
+    return buffer
+
+
+
 def receive_bluetooth():
     buffer = []
     while True:
-        logging.debug('Waiting for message')
+        #logging.debug('Waiting for message')
         if len(buffer) < 4:
-            buffer = client_sock.recv(1024)
+            buffer = get_data_from_client()
            #  logging.debug(str(len(buffer)))
                         
         # Read the first word of the message
         seq_no, op, o_id = unpack('!HBB', buffer[0:BASE_HDR_LEN])
-        logging.debug('Received message. Sequence number: {}'.format(seq_no))
-        logging.debug('Op code: {} Overlay ID: {}'.format(op, o_id))
+        #logging.debug('Received packet: {:5}'.format(seq_no))
+        #logging.debug('Op code: {} Overlay ID: {}'.format(op, o_id))
         if op == OP_ADD_OVERLAY:
             if len(buffer) < ADD_OVERLAY_HDR_LEN:
                 return None
@@ -62,15 +72,7 @@ def receive_bluetooth():
                 while (msg_len > (len(buffer))):
                     size = len(buffer)
                     
-                    buffer += client_sock.recv(1024)
-                   # logging.debug(str(len(buffer)))
-                logging.debug(str(msg_len) + ' ' + str(len(buffer)))
-                try:
-                    seq_no2, op2, o_id2 = unpack('!HBB', buffer[msg_len:BASE_HDR_LEN])
-                    logging.debug('DISCARDED SEQ NUMBER {}'.format(seq_no2))
-                    logging.debug('Op code: {} Overlay ID: {}'.format(op2, o_id2))
-                except:
-                    logging.debug('no bytes discared.')
+                    buffer += get_data_from_client()
                 return buffer[0:msg_len]
 
         elif op == OP_REMOVE_OVERLAY:
@@ -109,8 +111,10 @@ def decrypt_message (msg):
     try:
         plaintext = aesgcm.decrypt (nonce ,ct, None)
         buf = buffer(aad + bytearray(plaintext))
+        logging.debug('Received packet: {:5}, decryption passed'.format(seq_no))
     except:
         buf = None
+        logging.debug('Received packet: {:5}, decryption failed'.format(seq_no))
     return buf
 
 def parse_message(msg, overlays):
@@ -141,13 +145,17 @@ if __name__ == "__main__":
     numPackets = 0
     server_sock = None
     client_sock = None
+    outputFile = open('socketData', 'w+')
+    display_times = open('display_times.csv', 'w+')
 
     def gentle_shutdown(*args):
         if client_sock:
             client_sock.close()
         if server_sock:
             server_sock.close()
+        outputFile.close()
         sys.exit(0)
+
 
     signal.signal(signal.SIGINT, gentle_shutdown)
     
@@ -169,8 +177,6 @@ if __name__ == "__main__":
             try:
                 msg = receive_bluetooth()
                 
-                logging.debug('received ' + str(numPackets) + 'th packet')
-                numPackets+=1
             except BluetoothError:
                 client_sock.close()
                 server_sock.close()
@@ -181,16 +187,17 @@ if __name__ == "__main__":
                 continue
 
             # Decrypt and check the tag
+            display_times.write('bitmap decryption,%.9f\n' % (time.time()*1000))
             msg = decrypt_message (msg)
             if not msg:
-                logging.debug('Decryption failed')
+                #logging.debug('Decryption failed')
                 continue
-            logging.debug('Decryption passed')
+            #logging.debug('Decryption passed')
             # Parse the message
             parse_message(msg, overlays)
             data = pickle.dumps(overlays)
             sock.send(data)
-            logging.debug('Sending overlays {}'.format(len(data)))
+            #logging.debug('Sending overlays {}'.format(len(data)))
             
     except Exception as e:
         logging.exception(e)
