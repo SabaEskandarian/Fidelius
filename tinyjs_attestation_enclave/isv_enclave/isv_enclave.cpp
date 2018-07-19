@@ -47,6 +47,8 @@
 #include <map>
 #include <stdlib.h>
 
+//#define timeNow() std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count()
+
 // This is the public EC key of the SP. The corresponding private EC key is
 // used by the SP to sign data used in the remote attestation SIGMA protocol
 // to sign channel binding data in MSG2. A successful verification of the
@@ -148,6 +150,8 @@ typedef struct _hash_buffer_t
 
 const char ID_U[] = "SGXRAENCLAVE";
 const char ID_V[] = "SGXRASERVER";
+
+FILE * enc_times = fopen("enc_times.csv", "w+");
 
 
 // Derive two keys from shared key and key id.
@@ -565,9 +569,6 @@ std::string copyString(const char* s, size_t len) {
 
 sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
                       sgx_ec256_signature_t* p_signature) {
-
-
-
     sgx_ecc_state_handle_t ecc_handle;
     sgx_status_t sample_ret = sgx_ecc256_open_context(&ecc_handle);
     if(SGX_SUCCESS != sample_ret)
@@ -1016,6 +1017,7 @@ sgx_status_t run_js(char* code, size_t len, const uint8_t *p_sig_code, size_t le
 
 //START OF KEYBOARD STUFF
 sgx_status_t get_keyboard_chars(uint8_t *p_src){
+
     
     if(&curForm == &nullForm || &curInput == &nullInput) {
         printf_enc("No input in focus.");
@@ -1040,6 +1042,7 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     uint8_t p_char[1]; //initialize a buffer
     
     sgx_status_t status;
+    //enclave_times << "key decrypt => form render," << timeNow() << ",";
     
     status = gcm_decrypt(&ciphertext[0],1,&p_char[0], &iv[0], &tag);
     if (p_char[0] == 0x7A){//letter z
@@ -1060,7 +1063,10 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     //printf_enc("KEYBOARD: Input Field Height= %d", curInput.height);
     //printf_enc("KEYBOARD: Char obtained: %x", p_char[0] );    
     //printf_enc("KEYBOARD: new value for input = %s", curInput.value.c_str());
+
+    
     forms[curForm.name].inputs[curInput.name] = curInput;
+    
     return status;
 }
 
@@ -1080,3 +1086,5 @@ sgx_status_t gcm_decrypt(uint8_t *p_src, uint32_t src_len, uint8_t *p_dst, uint8
     //printf_enc("Status_decrypt: %x\n", status);
     return status;
 }
+
+

@@ -7,6 +7,8 @@
 #include <stdarg.h>
 #include <string>
 #include <map>
+//#include <chrono>
+//#include <fstream>
 
 #define bytes_per_pixel 4
 
@@ -34,6 +36,9 @@ static uint16_t seq_no = 0;
 
 extern std::map<std::string, form> forms;
 extern std::string origin;
+
+//#define timeNow() std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count()
+//ofstream denc_times("dis_enc_times.csv");
 
 void printFormDisplay(form f){
     printf_enc("# elements in form: %d\n", f.inputs.size());
@@ -133,6 +138,7 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
   /* Copy the encrypted data to the output buffer */
   sgx_aes_gcm_128bit_tag_t tag;
   /* TODO: What if encryption fails? */
+  //denc_times << "bitmap_encryption," << timeNow() << "," << std::endl;
   if (sgx_rijndael128GCM_encrypt(&p_key, p_enc, (uint32_t) (output - p_enc), p_enc, p_iv,
                              BMP_IV_LEN, NULL, 0, &tag) != SGX_SUCCESS) printf_enc("DISPLAY: ENCRYPT FAILED");
 
@@ -140,6 +146,7 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
   memcpy(output,(uint8_t *) &tag, BMP_TAG_LEN);
   output += BMP_TAG_LEN;
   memcpy(output, p_iv, BMP_IV_LEN);
+  
   printf_enc("DISPLAY: OVERLAY PACKET CREATED, RETURNING NORMALLY");
 }
 

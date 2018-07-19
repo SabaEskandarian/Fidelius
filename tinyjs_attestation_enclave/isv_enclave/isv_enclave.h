@@ -69,6 +69,7 @@ typedef struct form
 void printf_enc(const char *fmt, ...);
 std::string intToString(int i);
 
+
 #if defined(__cplusplus)
 }
 #endif

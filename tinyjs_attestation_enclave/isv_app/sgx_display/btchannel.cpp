@@ -10,13 +10,14 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/rfcomm.h>
+#include <bluetooth/l2cap.h>
 #include "btchannel.h"
 
 /* Setting this to 1 will cause channel_open to scan discoverable bluetooth
  * devices for one with a name "raspberrypi". Setting this to 0 uses the
  * hardcoded bluetooth address defined as PI_ADDR */
 #define BT_SCAN 0
-#define PI_ADDR "00:1A:7D:DA:71:13" //B8:27:EB:1C:41:F8"
+#define PI_ADDR "00:1B:DC:06:6E:F5" //B8:27:EB:1C:41:F8"
 
 /* Bluetooth code modified from
  * https://people.csail.mit.edu/albert/bluez-intro/ */
@@ -27,17 +28,32 @@
  */
 std::ofstream log;
 int packetNum = 0;
+
+int set_l2cap_mtu( int sock, uint16_t mtu ) {
+  struct l2cap_options opts;
+    socklen_t optlen = sizeof(opts), err;
+    err = getsockopt( sock, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen );
+    if( ! err ) {
+        opts.omtu = opts.imtu = mtu;
+        err = setsockopt( sock, SOL_L2CAP, L2CAP_OPTIONS, &opts, optlen );
+    }
+    return err;
+};
+
+BluetoothChannel::BluetoothChannel() {
+  log.open("btlog.txt");
+}
+
 int BluetoothChannel::channel_open()
 {  
-  log.open("btlog.txt");
   log << "trying to open channel" << std::endl;
   inquiry_info *ii = NULL;
   int max_rsp, num_rsp, dev_id, len, flags, i;
   char rsp_addr[19] = { 0 };
   char rsp_name[248] = { 0 };
   char target[] = "raspberrypi";
-  struct sockaddr_rc addr = { 0 };
-
+  //struct sockaddr_rc addr = { 0 };
+  struct sockaddr_l2 addr = { 0 };
 #if BT_SCAN
   log << "bt scan set to 1" << std::endl;
   dev_id = hci_get_route(NULL);
@@ -102,10 +118,16 @@ int BluetoothChannel::channel_open()
   return -1;
 #else
   log << "bt scan set to 0" << std::endl;
-  sock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-  addr.rc_family = AF_BLUETOOTH;
-  addr.rc_channel = (uint8_t) 1;
-  str2ba(PI_ADDR, &addr.rc_bdaddr );
+  sock = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP); //SOCK_STREAM, BTPROTO_RFCOMM
+  set_l2cap_mtu(sock, 65535);
+
+  addr.l2_family = AF_BLUETOOTH;
+  addr.l2_psm = htobs(0x1001);
+  str2ba(PI_ADDR, &addr.l2_bdaddr );
+
+  // addr.rc_family = AF_BLUETOOTH;
+  // addr.rc_channel = (uint8_t) 1;
+  // str2ba(PI_ADDR, &addr.rc_bdaddr );
  //printf("Opening RFCOMM socket \n");
   log << "opening socket" << std::endl;
   if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)))
@@ -130,10 +152,10 @@ int BluetoothChannel::channel_send(char * buffer, int len)
  packetNum++;
   if (resp == -1)
   {
-   log << "Reopenning connection." << std::endl;
+   log << "Reopening connection." << std::endl;
     if (channel_open() == -1)
     {
-     log << "Failed reopenning connection" << std::endl;
+     log << "Failed reopening connection" << std::endl;
       return -1;
     }
     else

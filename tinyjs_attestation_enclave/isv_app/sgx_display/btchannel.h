@@ -4,7 +4,7 @@
 class BluetoothChannel
 {
   public:
-    BluetoothChannel (){};
+    BluetoothChannel ();
     int channel_open ();
     int channel_send (char *data, int len);
     void channel_close ();

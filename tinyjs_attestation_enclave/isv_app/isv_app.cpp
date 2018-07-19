@@ -87,6 +87,7 @@
 typedef std::chrono::high_resolution_clock::time_point TimeVar;
 #define duration(a) std::chrono::duration_cast<std::chrono::nanoseconds>(a).count()
 #define timeNow() std::chrono::high_resolution_clock::now()
+#define absTime() std::chrono::duration_cast<std::chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count()
 #define ENCLAVE_PATH "isv_enclave.signed.so"
 
 sgx_enclave_id_t enclave_id;
@@ -104,6 +105,8 @@ using namespace std;
 
 KeyboardDriver KB("/dev/ttyACM0", "/dev/ttyACM1");
 ofstream myfile;
+
+
 
 void sendMessage(string message) {
     unsigned int len = message.length();
@@ -285,8 +288,14 @@ int eventsUntilCloseLog = 40;
 
 bool runningManager = true;
 pair<string, string> focusInput;
+uint8_t sharedOverlayPacket[524288];
+uint32_t sharedOutLen;
 condition_variable_any cv;
+condition_variable_any overlaycv;
+bool overlayPacketInitialized = false;
 mutex keyboard_mutex;
+mutex overlay_mutex;
+
 
 
 void handleOnBlur(string formName, string inputName, double mouseX, double mouseY) {
@@ -542,62 +551,86 @@ bool parseMessage(string message) {
   return true;
 }
 
-
-
-void listenForKeyboard() {
-  ofstream sockFile("clientSocketData.bin", ios::binary);
+void sendToDisplay() {
+	myfile << "CREATED BT THREAD";
+	BluetoothChannel connection;
+	ofstream em_times("em_bt_times.csv");
 	int numPacketsSent = 0;
-    myfile << "CREATED THREAD" << endl;
-    BluetoothChannel connection;
-    TimeVar connectionStart = timeNow();
-    if (connection.channel_open() < 0) {
+	if (connection.channel_open() < 0) {
         myfile << "FAILED BT CONNECT" << endl;
         myfile.close();
         return;
     }
-    myfile << "BT CONNECTED, time elapsed: " << duration(timeNow() - connectionStart) << endl;
-    myfile.flush();
+    myfile << "BT CONNECTED" << endl;
+    uint8_t outBuff[524288];
+    mutex overlayInit_mutex;
+    unique_lock<mutex> lk(overlayInit_mutex);
+    overlaycv.wait(lk,[]{return overlayPacketInitialized;});
+    myfile << "overlayPacketInitialized: " << overlayPacketInitialized << endl;
+    while(true) {
+
+    	overlay_mutex.lock();
+    	uint32_t out_len = sharedOutLen;
+    	memcpy(outBuff, sharedOverlayPacket, out_len);
+    	overlay_mutex.unlock();
+
+    	TimeVar btsendStart = timeNow();
+    	em_times << "bluetooth send," << absTime() << endl;
+        if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
+            myfile << "BT FAILED TO SEND PACKET\n" << endl;
+        } else {
+        	myfile << "BT SENT PACKET time elapsed: " << duration(timeNow() - btsendStart) << " num packets sent: " << numPacketsSent << endl << endl;
+        	numPacketsSent++;
+        }
+        em_times << "bluetooth sent," << absTime() << endl;
+    }
+}
+
+void listenForKeyboard() {
+	ofstream em_times("em_kb_times.csv");
+	int numPacketsSent = 0;
+    myfile << "CREATED KEYBOARD THREAD" << endl;
+    
     uint8_t keyboardBuff[58] = {0};
     while(true) {
         unique_lock<mutex> lk(keyboard_mutex);
         cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
-        TimeVar btsendStart = timeNow();
         uint8_t outBuff[524288];
         uint32_t out_len;
+        em_times << "create_add_overlay_msg ECALL," << absTime() << endl;
         create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
-        sockFile.write((char *)outBuff, out_len);
+        em_times << "create_add_overlay_msg ERET," << absTime() << endl;
 
-        if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
-            myfile << "BT FAILED TO SEND PACKET\n" << endl;
-        } else {
-          myfile << "BT SENT PACKET time elapsed: " << duration(timeNow() - btsendStart) << " num packets sent: " << numPacketsSent << endl << endl;
-        	numPacketsSent++;
-        	
-        }
-        //myfile << "KEYBOARD: trying to get encrypted input" << endl;
-        TimeVar kbgetStart = timeNow();
+        overlay_mutex.lock();
+        memcpy(sharedOverlayPacket, outBuff, out_len);
+        sharedOutLen = out_len;
+        overlayPacketInitialized = true;
+        overlaycv.notify_all();
+        myfile << "NOTIFYING THAT PACKET IS READY" << endl;
+        overlay_mutex.unlock();
+
+        em_times << "getEncryptedKeyboardInput call," << absTime() << endl;
         int enc_bytes = KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
+        em_times << "getEncryptedKeyboardInput ret," << absTime() << endl;
+        
         if (enc_bytes <= 0) {
-            //myfile << "TIMEOUT on encrypted input" << endl;
+            myfile << "TIMEOUT on encrypted input" << endl;
         }
         else
         {
-            //myfile << "KEYBOARD: got encrypted input, time elapsed: " << duration(timeNow() - kbgetStart) << endl;
             uint8_t bytebuff[29];
             hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
             sgx_status_t ret;
-            //myfile << "KEYBOARD BUFFER: " << bytebuff << endl;
-            //myfile << keyboardBuff << endl;
-
             TimeVar kbsendStart = timeNow();
+            em_times << "get_keyboard_chars ECALL," << absTime() << endl;
             get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
-            //myfile << "KEYBOARD sent to enclave, time elapsed: " << duration(timeNow() - kbsendStart) << endl;
+            em_times << "get_keyboard_chars ERET," << absTime() << endl;
         }
     }
-    uint32_t out_len;
-    uint8_t outBuff[524288];
-    create_remove_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str());
-    connection.channel_close();
+    //uint32_t out_len;
+    //uint8_t outBuff[524288];
+    //create_remove_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str());
+    //connection.channel_close();
 }
 
 
@@ -1157,7 +1190,8 @@ if(argc > 2)
     //--------------------------end testing-----------------------------
 
     std::string oneLine = "";
-    thread test_thread(listenForKeyboard);
+    thread kb_thread(listenForKeyboard);
+    thread ds_thread(sendToDisplay);
 
     //addForm(vector<string>({"3", "myForm", "sig", "origin", "123", "312", "inp1", "1", "1", "1", "1", "inp2", "12", "32", "2", "2"}));
     while (1){
@@ -1225,6 +1259,7 @@ sgx_destroy_enclave(enclave_id);
 
     //printf("\nEnter a character before exit ...\n");
     //getchar();
-test_thread.join();
+kb_thread.join();
+ds_thread.join();
 return ret;
 }
