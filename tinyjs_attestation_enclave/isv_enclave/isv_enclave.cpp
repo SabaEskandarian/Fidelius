@@ -72,9 +72,9 @@ static const sgx_ec256_public_t g_sp_pub_key = {
 
 };
 
-/* ===================
- * Original Public Key
- * ===================
+/* ==========
+ * Public Key
+ * ==========
  * 
  * We use this to validate the signature of forms/scripts signatures.  
  * 
@@ -93,9 +93,9 @@ static const sgx_ec256_public_t test_p_key = {
      0xb6, 0x98, 0xd8, 0xeb, 0xeb, 0xc3, 0x81, 0x8f,
      0x2c, 0xd2, 0x74, 0x7d, 0x6a, 0x3c, 0x9d, 0xf7}};
 
-/* ====================
- * Original Private Key
- * ====================
+/* ===========
+ * Private Key
+ * ===========
  * 
  * This is the private key to sign forms/scripts. This is used by the
  * developers to generate signatures of forms/scripts.
@@ -138,9 +138,14 @@ static sgx_ec256_private_t test_priv = {
 	}
 };*/
 
-// Used to store the secret passed by the SP in the sample code. The
-// size is forced to be 8 bytes. Expected value is
-// 0x01,0x02,0x03,0x04,0x0x5,0x0x6,0x0x7
+/* =========================
+ * Symmetric Key for NET I/O
+ * =========================
+ *
+ * Used to store the secret passed by the SP in the sample code. The
+ * size is forced to be 8 bytes. Expected value is 
+ * 0x01,0x02,0x03,0x04,0x0x5,0x0x6,0x0x7
+ */
 uint8_t g_secret[8] = {0};
 
 //------------------remote attestation stuff---------------------
@@ -1041,6 +1046,14 @@ sgx_status_t run_js(char *code, size_t len, const uint8_t *p_sig_code, size_t le
     memcpy(tmp, code, len);
     std::string enc_code = std::string(tmp);
 
+
+    /*
+     * TODO: 
+     * 
+     * enc_code needs to start with the content of tiny_init.js
+     * and ends with the content of tiny_end.js
+     *
+     */
     //also add loading/saving code
     enc_code = "var str_data = __native_js_load_items(); var local_storage_data = eval(str_data);\n" + enc_code;
     enc_code = str_forms + enc_code;
