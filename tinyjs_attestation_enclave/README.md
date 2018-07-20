@@ -17,6 +17,8 @@ Once up and running, EM waits to receive messages from the browser extension. Me
 
 ## Installation/Usage
 
+0. Make sure you installed SGX driver, PSW, and SDK.  
+
 1. First, install the bluetooth library for communicating with the secure display with:
 ```
 $ sudo apt install libbluetooth-dev
