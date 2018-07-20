@@ -279,8 +279,8 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 
 // enclave manager required functions
 
-#define DEBUG_MODE 1
-#define NODEVICES_MODE 1
+bool DEBUG_MODE = 0;
+bool NODEVICES_MODE = 0;
 
 #define ON_BLUR 0
 #define ON_FOCUS 1
@@ -715,8 +715,10 @@ int main(int argc, char *argv[])
     int32_t verification_samples = sizeof(msg1_samples) / sizeof(msg1_samples[0]);
 
     FILE *OUTPUT = fopen("EM_report.txt", "w"); //stdout;
+
     if (NODEVICES_MODE){
         fprintf(OUTPUT, "Running in NODEVICES_MODE\n");
+        fflush(OUTPUT);
     }
     ////fprintf(stdout, "\nhelp1 \n");
 
