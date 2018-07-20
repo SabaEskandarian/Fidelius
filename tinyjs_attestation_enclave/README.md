@@ -1,10 +1,8 @@
 ## Fidelius Chrome Extension:
 
 These are the files of the chrome extension:
- * **manifest.JSON**: master file viewed by the chrome browser. Includes the title,
-icon, background scripts/pages, contents scripts, etc.
- * **background.js**: waits for the browserAction event, which is when the user clicks
-on the Chrome extension
+ * **manifest.JSON**: master file viewed by the chrome browser. Includes the title, icon, background scripts/pages, contents scripts, etc.
+ * **background.js**: waits for the browserAction event, which is when the user clicks on the Chrome extension
  * **htmlParser.js**: logic that performs the operations of the chrome extension. Called in background.js
  * **syntaxChecker.js**: Ensures a web page’s scripts and forms are suitable for use with the Enclave by checking for signature and secure tags. Called in background.js
 
@@ -49,4 +47,30 @@ Due to some complications with Bluetooth pairing, the first time this is run wit
 
 Inside `Fidelius/tinyjs_attestation_enclave/isv_app/sgx_display/btchannel.cpp`, `BT_SCAN` must be set to `1` and recompiled. Additionally, the Raspberry Pi Bluetooth must be discoverable, this is accessible by clicking on the Bluetooth icon in the top right of the screen. If this is done correctly the host computer will scan discoverable Bluetooth devices and connect to a device with the name "raspberrypi". If using a new Raspberry Pi, the Bluetooth address must be updated underneath the `BT_SCAN` definition, the Bluetooth address should get printed in the debug log when scanning. For future uses `BT_SCAN` can be set back to `0` and making the Raspberry Pi discoverable is not necessary.
 
+## Other Info for SGX
+
+### Purpose of RemoteAttestation
+The project demonstrates:
+- How an application enclave can attest to a remote party
+- How an application enclave and the remote party can establish a secure session
+
+### How to Build/Execute the Sample Code (keeping this for now, it should go away)
+
+1. Install Intel(R) SGX SDK for Linux* OS
+2. Build the project with the prepared Makefile:
+    a. Hardware Mode, Debug build:
+        $ make
+    b. Hardware Mode, Pre-release build:
+        $ make SGX_PRERELEASE=1 SGX_DEBUG=0
+    c. Hardware Mode, Release build:
+        $ make SGX_DEBUG=0
+    d. Simulation Mode, Debug build:
+        $ make SGX_MODE=SIM
+    e. Simulation Mode, Pre-release build:
+        $ make SGX_MODE=SIM SGX_PRERELEASE=1 SGX_DEBUG=0
+    f. Simulation Mode, Release build:
+        $ make SGX_MODE=SIM SGX_DEBUG=0
+3. Execute the binary directly: (this should not apply for us)
+    $ ./app
+4. Remember to "make clean" before switching build mode
 
