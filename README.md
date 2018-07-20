@@ -1,4 +1,4 @@
-# Setting up Bluetooth Pairing RPI3 <-> Desktop
+## Setting up Bluetooth Pairing RPI3 <-> Desktop
 
 Make the desktop discoverable. Then, open a terminal on RPI3 and type:
 
