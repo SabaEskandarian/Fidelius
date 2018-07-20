@@ -33,7 +33,8 @@ OP_CLEAR_OVERLAYS = 3
 
 
 def init_bluetooth():
-    server_sock=BluetoothSocket( RFCOMM )
+    server_sock=BluetoothSocket( L2CAP ) #RFCOMM )
+    set_l2cap_mtu( server_sock, 65535 )
     server_sock.bind(('',PORT_ANY))
     server_sock.listen(1)
     port = server_sock.getsockname()[1]
@@ -44,7 +45,7 @@ def init_bluetooth():
 
 def get_data_from_client():
     buffer = []
-    buffer = client_sock.recv(1024)
+    buffer = client_sock.recv(65535)
     outputFile.write(bytearray(buffer))
     return buffer
 
@@ -117,13 +118,33 @@ def decrypt_message (msg):
         logging.debug('Received packet: {:5}, decryption failed'.format(seq_no))
     return buf
 
+def bits2byte(bits8):
+    result = 0;
+    for bit in bits8:
+        result <<=1
+        result |= bit
+    return result
+
+def byteToBits(byte):
+    return [1 if digit=='1' else 0 for digit in bin(byte)[2:]]
+
 def parse_message(msg, overlays):
     seq_no, op, o_id = unpack('!HBB', msg[0:BASE_HDR_LEN])
     if op == OP_ADD_OVERLAY:
         # Add the origin bitmap
         field_iter = ADD_OVERLAY_HDR_LEN
         x, y, width, height = unpack('!HHHH', msg[field_iter:field_iter+8])
-        img = Image.frombytes('RGBA', (width, height), msg[field_iter+8:])
+
+        #RE-HYDRATE IMAGE BITMAP
+        bytesarr = bytearray(msg[field_iter+8:])
+        bitlists = [byteToBits(byte) for byte in bytesarr]
+        bits = [y for x in bitlists for y in x]
+
+        octets = [bits[i:i+8] for i in range(0, len(bits), 8)]
+        data = bytes(bytearray([bits2byte(octet) for octet in octets]))
+        img = Image.frombytes('1', (width, height), data)
+
+        img = Image.frombytes('1', (width, height), msg[field_iter+8:])
         form = Form(o_id, x, y, img)
         field_iter += width * height * 4 + 8;
         # Add the field input bitmaps
@@ -131,7 +152,18 @@ def parse_message(msg, overlays):
             x, y, width, height = unpack('!HHHH', msg[field_iter:field_iter+8])
             x += form.x
             y += form.y
-            img = Image.frombytes('RGBA', (width, height), msg[field_iter:])
+
+            #RE-HYDRATE IMAGE BITMAP
+
+
+            bytesarr = bytearray(msg[field_iter:])
+            bitlists = [byteToBits(byte) for byte in bytesarr]
+            bits = [y for x in bitlists for y in x]
+
+            octets = [bits[i:i+8] for i in range(0, len(bits), 8)]
+            data = bytes(bytearray([bits2byte(octet) for octet in octets]))
+            img = Image.frombytes('1', (width, height), data)
+
             form.fields.append(Field(x, y, img))
             # Increase our iterator by the number of bytes used for this field
             field_iter += width * height * 4 + 8;

@@ -7,6 +7,8 @@
 #include <stdarg.h>
 #include <string>
 #include <map>
+#include <vector>
+#include <bitset>
 //#include <chrono>
 //#include <fstream>
 
@@ -170,6 +172,28 @@ static uint32_t add_bitmap_data(uint8_t *output, uint16_t x, uint16_t y,
   Bitmap *b = bm_make_text(width, height, bm_atoi("black"), bm_atoi("white"),
                            255, text);
 
+  int len = width*height*4;
+	stlpmtx_std::vector<bool> bits;
+	for (int i = 0; i < len; i+=4) {
+		if ((b->data[i]) == 0) {
+			bits.push_back(false);
+		} else {
+			bits.push_back(true);
+		}
+	}
+	while (bits.size()%8 != 0) {bits.push_back(false);}
+
+	int bufferLen = bits.size()/8;
+	char buffer[bufferLen];
+	for (int i = 0; i < bufferLen; i++) {
+		std::bitset<8> bits8;
+		for (int j = 0; j < 8; j++) {
+			bits8[j] = bits[i*8 + j];
+		}
+		char oneByte = (char)bits8.to_ulong();
+		buffer[i] = oneByte;
+	}
+
 
   /* Copy meta data and rgba data to buffer */
   x = htons(x);
@@ -184,8 +208,8 @@ static uint32_t add_bitmap_data(uint8_t *output, uint16_t x, uint16_t y,
   height = htons(height);
   memcpy(output, &height, sizeof(uint16_t));
   output += sizeof(uint16_t);
-  memcpy(output, b->data, img_len);
-  output += img_len;
+  memcpy(output, buffer, bufferLen);
+  output += bufferLen;
 
   /* Free bitmap data */
   bm_free(b);
