@@ -280,6 +280,8 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 // enclave manager required functions
 
 #define DEBUG_MODE 1
+#define NODEVICES_MODE 1
+
 #define ON_BLUR 0
 #define ON_FOCUS 1
 #define INITIALIZE_ENCLAVE 2
@@ -588,6 +590,10 @@ bool parseMessage(string message)
 
 void sendToDisplay()
 {
+    if (NODEVICES_MODE) {
+        return;
+    }
+
     myfile << "CREATED BT THREAD";
     BluetoothChannel connection;
     ofstream em_times("em_bt_times.csv");
@@ -631,6 +637,10 @@ void sendToDisplay()
 
 void listenForKeyboard()
 {
+    if (NODEVICES_MODE) {
+        return;
+    }
+
     ofstream em_times("em_kb_times.csv");
     int numPacketsSent = 0;
     myfile << "CREATED KEYBOARD THREAD" << endl;
@@ -705,6 +715,9 @@ int main(int argc, char *argv[])
     int32_t verification_samples = sizeof(msg1_samples) / sizeof(msg1_samples[0]);
 
     FILE *OUTPUT = fopen("EM_report.txt", "w"); //stdout;
+    if (NODEVICES_MODE){
+        fprintf(OUTPUT, "Running in NODEVICES_MODE\n");
+    }
     ////fprintf(stdout, "\nhelp1 \n");
 
 #define VERIFICATION_INDEX_IS_VALID() (verify_index > 0 && \
@@ -1216,9 +1229,10 @@ CLEANUP:
     //--------------------------end testing-----------------------------
 
     std::string oneLine = "";
+
     thread kb_thread(listenForKeyboard);
     thread ds_thread(sendToDisplay);
-
+    
     //addForm(vector<string>({"3", "myForm", "sig", "origin", "123", "312", "inp1", "1", "1", "1", "1", "inp2", "12", "32", "2", "2"}));
     while (1)
     {
