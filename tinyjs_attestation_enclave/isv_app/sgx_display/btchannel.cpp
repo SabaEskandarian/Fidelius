@@ -17,7 +17,7 @@
  * devices for one with a name "raspberrypi". Setting this to 0 uses the
  * hardcoded bluetooth address defined as PI_ADDR */
 #define BT_SCAN 0
-#define PI_ADDR "00:1B:DC:06:6E:F5" //B8:27:EB:1C:41:F8"
+#define PI_ADDR "00:1A:7D:DA:71:13" //B8:27:EB:1C:41:F8"
 
 /* Bluetooth code modified from
  * https://people.csail.mit.edu/albert/bluez-intro/ */
