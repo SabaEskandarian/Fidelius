@@ -1,0 +1,20 @@
+enclave {
+    from "Sealing/Sealing.edl" import *;
+
+    trusted {
+        /* define ECALLs here. */
+        public int generate_random_number(int one);
+        public void hardcoded(void);
+        public void gcm_decrypt([user_check] uint8_t *p_src, uint32_t src_len, [in, size=1000] uint8_t *p_dst, [in] uint8_t *p_iv,  [in] sgx_aes_gcm_128bit_tag_t *p_in_mac);
+	public void change_mode();
+	public void nextchar_decrypted();
+	public void nextchar_encrypted();
+    };
+
+    untrusted {
+        /* define OCALLs here. */
+        void ocall_print([in, string]const char* str);
+        void ocall_getKeyBoardInput([user_check] uint8_t *kb, [out, size = 1] uint8_t *p_src, [out, size = 16] uint8_t *tag, [out, size = 12] uint8_t *p_iv);
+        void ocall_getPointerToKb([out] uint8_t **kb);	
+    };
+};
