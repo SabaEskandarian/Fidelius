@@ -93,6 +93,7 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
 
   std::map<std::string,form>::iterator form_it;
   form_it = forms.find((std::string)(form_id));
+
   if (form_it == forms.end())
   {
     //ocall_print_string("DISPLAY: FORM NOT FOUND");
@@ -101,14 +102,14 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
   //printFormDisplay(form);
   //printf_enc("NUMBER OF INPUTS: %d", form.inputs.size());
 
-  printf_enc("DISPLAY: FORM ORGIN = %s", origin.c_str());
+  //printf_enc("DISPLAY: FORM ORGIN = %s", origin.c_str());
   /* Add the origin bitmap */
   bitmap_len = add_bitmap_data(output, form.x, form.y, 200,
                             30, origin);
   *out_len += bitmap_len;
   output += bitmap_len;
 
-  ocall_print_string("DISPLAY: ADDING FIELD BITMAPS");
+  //ocall_print_string("DISPLAY: ADDING FIELD BITMAPS");
   /* Add the bitmaps of the input fields */
   //printf_enc("DISPLAY: Form X = %d", form.x);
   //printf_enc("DISPLAY: Form Y = %d", form.y);
@@ -116,14 +117,13 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
        it != form.inputs.end(); it++)
   {
     input field = it->second;
-    printf_enc("DISPLAY: Input Field name = %s value = %s", it->first.c_str(), field.value.c_str());
+    printf_enc("DISPLAY: Form: %s Input Field name = %s value = %s", form.name.c_str(), it->first.c_str(), field.value.c_str());
     //printf_enc("DISPLAY: Input Field Value = %s", );
     //printf_enc("DISPLAY: Input Field X = %d", field.x);
     //printf_enc("DISPLAY: Input Field Y = %d", field.y);
     //printf_enc("DISPLAY: Input Field Width = %d", field.width);
    //printf_enc("DISPLAY: Input Field Height= %d", field.height);
 
-    //ocall_print_string(field.value.c_str());
     bitmap_len = add_bitmap_data(output, field.x, field.y, field.width,
                                  field.height, field.value);
     output += bitmap_len;
@@ -149,7 +149,7 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
   output += BMP_TAG_LEN;
   memcpy(output, p_iv, BMP_IV_LEN);
   
-  printf_enc("DISPLAY: OVERLAY PACKET CREATED, RETURNING NORMALLY");
+  //printf_enc("DISPLAY: OVERLAY PACKET CREATED, RETURNING NORMALLY");
 }
 
 /* Adds the bitmap metadata and rgba data for an input field into the encrypted buffer
@@ -184,13 +184,14 @@ static uint32_t add_bitmap_data(uint8_t *output, uint16_t x, uint16_t y,
 	while (bits.size()%8 != 0) {bits.push_back(false);}
 
 	int bufferLen = bits.size()/8;
-	char buffer[bufferLen];
+	char buffer[bufferLen + 1];
+	buffer[bufferLen] = '\0';
 	for (int i = 0; i < bufferLen; i++) {
 		std::bitset<8> bits8;
 		for (int j = 0; j < 8; j++) {
 			bits8[j] = bits[i*8 + j];
 		}
-		char oneByte = (char)bits8.to_ulong();
+		unsigned char oneByte = (unsigned char)bits8.to_ulong();
 		buffer[i] = oneByte;
 	}
 
@@ -208,13 +209,18 @@ static uint32_t add_bitmap_data(uint8_t *output, uint16_t x, uint16_t y,
   height = htons(height);
   memcpy(output, &height, sizeof(uint16_t));
   output += sizeof(uint16_t);
-  memcpy(output, buffer, bufferLen);
-  output += bufferLen;
+
+  //printf_enc("length of compressed data: %d", bufferLen);
+
+  memcpy(output, buffer /*b->data*/, bufferLen /*img_len*/);
+
+  //printf_enc(buffer);
+  output += bufferLen /*img_len*/;
 
   /* Free bitmap data */
   bm_free(b);
 
-  return img_len + 8;
+  return /*img_len*/bufferLen + 8;
 }
 
 /* Creates an authenticated message to remove an overlay on the screen. The

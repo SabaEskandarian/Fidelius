@@ -43,9 +43,13 @@
 #include "TinyJS_MathFunctions.h"
 #include "sgx_tseal.h"
 #include <bitset>
+#include "sgx_thread.h"
 
 #include <map>
 #include <stdlib.h>
+
+#define FOCUS_ON 1
+#define FOCUS_OFF 0
 
 //#define timeNow() std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count()
 
@@ -133,6 +137,10 @@ static sgx_ec256_private_t test_priv = {
 // size is forced to be 8 bytes. Expected value is
 // 0x01,0x02,0x03,0x04,0x0x5,0x0x6,0x0x7
 uint8_t g_secret[8] = {0};
+short ENCLAVE_STATE;
+sgx_thread_mutex_t * curInputMutex;
+
+
 
 
 //------------------remote attestation stuff---------------------
@@ -308,6 +316,7 @@ sgx_status_t enclave_init_ra(
     int b_pse,
     sgx_ra_context_t *p_context)
 {
+    sgx_thread_mutex_init(curInputMutex, NULL); 
     // isv enclave call to trusted key exchange library.
     sgx_status_t ret;
     if(b_pse)
@@ -602,6 +611,7 @@ sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
 sgx_status_t add_form(const char* name, size_t len, 
                         const char* this_origin, size_t origin_len, uint16_t x, uint16_t y) {
 
+
     std::string oName = copyString(this_origin, origin_len);
     
     //if the manager is attempting to change the origin, something has gone wrong
@@ -698,11 +708,13 @@ sgx_status_t add_input(const char * form_name, size_t len_form, const char* inpu
 //sets flag indicating which form/input field should stand by to recive user input
 sgx_status_t onFocus(const char* formName, const char* inputName, 
                     uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+  sgx_thread_mutex_lock(curInputMutex);
   std::map<std::string, form>::iterator it;
   it = forms.find((std::string) formName);
   
   if(it == forms.end()) {
     printf_enc("INPUT: invalid formname: %s", formName);
+    sgx_thread_mutex_unlock(curInputMutex);
     return SGX_ERROR_INVALID_PARAMETER;
   }
   form f = it->second;
@@ -711,6 +723,7 @@ sgx_status_t onFocus(const char* formName, const char* inputName,
 
   if(it2 == f.inputs.end()) {
     printf_enc("INPUT: invalid inputname: %s", inputName);
+    sgx_thread_mutex_unlock(curInputMutex);
     return SGX_ERROR_INVALID_PARAMETER;
   }
   //printf_enc("INPUT: FORM NAME = %s", it->first.c_str());
@@ -724,13 +737,23 @@ sgx_status_t onFocus(const char* formName, const char* inputName,
   //printf_enc("INPUT: Input Field Y = %d", curInput.y);
   //printf_enc("INPUT: Input Field Width = %d", curInput.width);
   //printf_enc("INPUT: Input Field Height= %d", curInput.height);
+  ENCLAVE_STATE = FOCUS_ON;
+  sgx_thread_mutex_unlock(curInputMutex);
   return SGX_SUCCESS;
 }
 
 //sets flag indicating no form/input field is ready to accept user input
 sgx_status_t onBlur() {
+  std::string fname = "loginform";
+  std::string iname = "username";
+  printf_enc("BEFORE BLUR data for %s: %s: %s",curForm.name.c_str(), curInput.name.c_str(), curForm.inputs[curInput.name].value.c_str());
+  sgx_thread_mutex_lock(curInputMutex);
   curForm = nullForm;
   curInput = nullInput;
+  ENCLAVE_STATE = FOCUS_OFF;
+  sgx_thread_mutex_unlock(curInputMutex);
+  printf_enc("AFTER BLUR data for %s: %s: %s",curForm.name.c_str(), curInput.name.c_str(), curForm.inputs[curInput.name].value.c_str());
+
   return SGX_SUCCESS;
 }
 
@@ -1017,10 +1040,11 @@ sgx_status_t run_js(char* code, size_t len, const uint8_t *p_sig_code, size_t le
 
 //START OF KEYBOARD STUFF
 sgx_status_t get_keyboard_chars(uint8_t *p_src){
-
+    sgx_thread_mutex_lock(curInputMutex);
     
-    if(&curForm == &nullForm || &curInput == &nullInput) {
+    if(ENCLAVE_STATE == FOCUS_OFF) {
         printf_enc("No input in focus.");
+        sgx_thread_mutex_unlock(curInputMutex);
         return SGX_ERROR_INVALID_PARAMETER;
     }
 
@@ -1046,6 +1070,7 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     
     status = gcm_decrypt(&ciphertext[0],1,&p_char[0], &iv[0], &tag);
     if (p_char[0] == 0x7A){//letter z
+        
         p_char[0] = -1; //basically doing nothing
     }
     else if(p_char[0] == 0x7f) {
@@ -1054,9 +1079,10 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
         }
     }
     else{
+        printf_enc("DETECTED KEY PRESS: %d", p_char[0]);
         curInput.value += p_char[0];
     }
-    //printf_enc("KEYBOARD: Input NAME = %s", curInput.name.c_str());
+    printf_enc("KEYBOARD: Form name = %s Input name = %s, value = %s",curForm.name.c_str(), curInput.name.c_str(),  curInput.value.c_str());
     //printf_enc("KEYBOARD: Input Field X = %d", curInput.x);
     //printf_enc("KEYBOARD: Input Field Y = %d", curInput.y);
     //printf_enc("KEYBOARD: Input Field Width = %d", curInput.width);
@@ -1064,9 +1090,14 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     //printf_enc("KEYBOARD: Char obtained: %x", p_char[0] );    
     //printf_enc("KEYBOARD: new value for input = %s", curInput.value.c_str());
 
-    
+
+    std::string fname = "loginform";
+    std::string iname = "username";
+    printf_enc("BEFORE ADDKEY data for loginform: username: %s", forms[fname].inputs[iname].value.c_str());
     forms[curForm.name].inputs[curInput.name] = curInput;
-    
+    printf_enc("AFTER ADDKEY data for loginform: username: %s", forms[fname].inputs[iname].value.c_str());
+
+    sgx_thread_mutex_unlock(curInputMutex);
     return status;
 }
 

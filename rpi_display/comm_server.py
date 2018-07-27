@@ -13,6 +13,7 @@ from struct import *
 from PIL import Image
 from bluetooth import *
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from bitarray import bitarray
 
 from tk import *
 
@@ -98,14 +99,12 @@ def decrypt_message (msg):
         aad = msg[:ADD_OVERLAY_HDR_LEN]
         ct = msg[ADD_OVERLAY_HDR_LEN:-IV_LEN];
         nonce = msg[-IV_LEN:]
-        #logging.debug('aad: ' + aad)
-        #logging.debug('ct: ' + ct)
+       
     else:
         aad = msg[:REMOVE_OVERLAY_HDR_LEN]
         ct = msg[REMOVE_OVERLAY_HDR_LEN:REMOVE_OVERLAY_HDR_LEN+TAG_LEN]
         nonce = msg[REMOVE_OVERLAY_HDR_LEN+TAG_LEN:]
-        #logging.debug('aad: ' + aad)
-        #logging.debug('ct: ' + ct)
+        
 
     
     aesgcm = AESGCM (binascii.unhexlify(secret_key))
@@ -126,47 +125,78 @@ def bits2byte(bits8):
     return result
 
 def byteToBits(byte):
-    return [1 if digit=='1' else 0 for digit in bin(byte)[2:]]
+
+    ret = [1 if digit=='1' else 0 for digit in bin(byte)[2:]]
+    while(len(ret) < 8):
+        ret.append(0)
+    return ret
+
+def numBytesToEncodePixels(num):
+    if num%8 == 0:
+        return num/8
+    return num/8 + 1;
 
 def parse_message(msg, overlays):
+    logging.debug("length of message: {}".format(len(msg)))
     seq_no, op, o_id = unpack('!HBB', msg[0:BASE_HDR_LEN])
     if op == OP_ADD_OVERLAY:
         # Add the origin bitmap
         field_iter = ADD_OVERLAY_HDR_LEN
         x, y, width, height = unpack('!HHHH', msg[field_iter:field_iter+8])
-
         #RE-HYDRATE IMAGE BITMAP
-        bytesarr = bytearray(msg[field_iter+8:])
-        bitlists = [byteToBits(byte) for byte in bytesarr]
-        bits = [y for x in bitlists for y in x]
+        #logging.debug("getting encodedstring")
+        encodedstring = "".join(map(lambda e: chr(ord(e)),msg[field_iter+8:field_iter+8+numBytesToEncodePixels(width*height)]))
+        ba = bitarray(endian='little')
+        #logging.debug("making bitarray")
+        ba.frombytes(encodedstring)
+        logging.debug("reinflating bitarray to RBG format") #this next step is the most expensive ~20 ms
+        white = chr(255)
+        black = chr(0)
+        data = []
+        for bit in ba.to01():
+            if bit == "1":
+                data.append(white)
+                data.append(white)
+                data.append(white)
+            else:
+                data.append(black)
+                data.append(black)
+                data.append(black)
+        #data = [[chr(255),chr(255),chr(255)] if bit == "1" else [chr(0),chr(0),chr(0)] for bit in ba.to01()]
+        logging.debug("flatening rgb data")
+        #data = [c for d in data for c in d]
+        #logging.debug("making image from bytes")
+        img = Image.frombytes('RGB', (width, height), "".join(data))
 
-        octets = [bits[i:i+8] for i in range(0, len(bits), 8)]
-        data = bytes(bytearray([bits2byte(octet) for octet in octets]))
-        img = Image.frombytes('1', (width, height), data)
-
-        img = Image.frombytes('1', (width, height), msg[field_iter+8:])
         form = Form(o_id, x, y, img)
-        field_iter += width * height * 4 + 8;
+        field_iter += numBytesToEncodePixels(width*height) + 8
         # Add the field input bitmaps
         while(field_iter < len(msg)):
+            
             x, y, width, height = unpack('!HHHH', msg[field_iter:field_iter+8])
             x += form.x
-            y += form.y
-
-            #RE-HYDRATE IMAGE BITMAP
-
-
-            bytesarr = bytearray(msg[field_iter:])
-            bitlists = [byteToBits(byte) for byte in bytesarr]
-            bits = [y for x in bitlists for y in x]
-
-            octets = [bits[i:i+8] for i in range(0, len(bits), 8)]
-            data = bytes(bytearray([bits2byte(octet) for octet in octets]))
-            img = Image.frombytes('1', (width, height), data)
+            y += form.y            
+            encodedstring = "".join(map(lambda e: chr(ord(e)),msg[field_iter+8:field_iter+8+numBytesToEncodePixels(width*height)]))
+            ba = bitarray(endian='little')
+            ba.frombytes(encodedstring)
+            #data = [[chr(255),chr(255),chr(255)] if bit == "1" else [chr(0),chr(0),chr(0)] for bit in ba.to01()]
+            data = []
+            for bit in ba.to01():
+                if bit == "1":
+                    data.append(white)
+                    data.append(white)
+                    data.append(white)
+                else:
+                    data.append(black)
+                    data.append(black)
+                    data.append(black)
+            #data = [c for d in data for c in d]
+            img = Image.frombytes('RGB', (width, height), "".join(data))
 
             form.fields.append(Field(x, y, img))
             # Increase our iterator by the number of bytes used for this field
-            field_iter += width * height * 4 + 8;
+            field_iter += numBytesToEncodePixels(width*height) + 8;
+            
         overlays[o_id] = form
     elif op == OP_REMOVE_OVERLAY:
         del overlays[o_id]
@@ -178,6 +208,7 @@ if __name__ == "__main__":
     server_sock = None
     client_sock = None
     outputFile = open('socketData', 'w+')
+    encodingFile = open('encoding.bin', 'w+')
     display_times = open('display_times.csv', 'w+')
 
     def gentle_shutdown(*args):
@@ -227,6 +258,7 @@ if __name__ == "__main__":
             #logging.debug('Decryption passed')
             # Parse the message
             parse_message(msg, overlays)
+            logging.debug("pickling overlay")
             data = pickle.dumps(overlays)
             sock.send(data)
             #logging.debug('Sending overlays {}'.format(len(data)))

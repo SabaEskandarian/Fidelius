@@ -32,7 +32,6 @@ def get_conn_comm():
     return srv_sock, conn
 
 if __name__ == "__main__":
-
     render_times = open("render_times.csv", 'w+')
     camera = None
     srv_sock, conn = None, None

@@ -1,6 +1,8 @@
 #include "keyboard_driver.h"
 #include <termios.h>
 #include <iostream>
+#include <errno.h>
+#include <stdio.h>
 #include <string.h>
 
 KeyboardDriver::KeyboardDriver(std::string characterPortName, std::string modePortName)
@@ -51,7 +53,7 @@ void KeyboardDriver::setAttributes(int handle){
 }
 
 int KeyboardDriver::openPorts() {
-  if ((_characterPortHandle = open(_characterPortName.c_str(), O_RDWR | O_NOCTTY | O_NDELAY, 0666)) == -1) {
+  if ((_characterPortHandle = open(_characterPortName.c_str(), O_RDWR | O_NOCTTY , 0666)) == -1) {
     perror(_characterPortName.c_str());
   }
   if ((_modePortHandle = open(_modePortName.c_str(), O_RDWR | O_NOCTTY | O_NDELAY, 0666)) == -1) {
@@ -94,7 +96,7 @@ int KeyboardDriver::getEncryptedKeyboardInput(uint8_t * p_dst, int len, bool blo
   //   };
 
   struct timeval t;
-  t.tv_sec = 1;
+  t.tv_sec = 20;
   t.tv_usec = 0;
   
   fd_set rfds;
@@ -102,13 +104,16 @@ int KeyboardDriver::getEncryptedKeyboardInput(uint8_t * p_dst, int len, bool blo
   FD_SET(_characterPortHandle, &rfds);
   int fds_ready = select(_characterPortHandle + 1, &rfds, NULL, NULL, &t);
   if (fds_ready <= 0) {
-    return fds_ready;
+    return -20;
   }
   
   int bytes_read = 0;
   if (FD_ISSET(_characterPortHandle, &rfds) || block) {
      // There is data to read on the relevant file descriptor.
      bytes_read = read(_characterPortHandle, p_dst, len);
+     if (bytes_read < 0) {
+        fprintf(stderr, "%s",strerror(errno));
+     }
      return bytes_read; 
   }
 

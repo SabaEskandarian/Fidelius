@@ -81,6 +81,7 @@
 // messages and the information flow.
 #include "sample_messages.h"
 #include <chrono>
+#include <unistd.h>
 
 
 
@@ -105,8 +106,14 @@ using namespace std;
 
 KeyboardDriver KB("/dev/ttyACM0", "/dev/ttyACM1");
 ofstream myfile;
+mutex myfileLock;
 
-
+void threadSafePrint(string str) {
+  myfileLock.lock();
+  myfile << str << endl;
+  myfile.flush();
+  myfileLock.unlock();
+}
 
 void sendMessage(string message) {
     unsigned int len = message.length();
@@ -163,8 +170,7 @@ void ocall_read_file(const char* fname, char* data, size_t len) {
 
 void ocall_print_string(const char *str)
 {
-    myfile << str << endl;;
-
+   threadSafePrint(str);
 }
 
 sgx_status_t enc_make_http_request(const char* method, const char* url, 
@@ -295,31 +301,38 @@ condition_variable_any overlaycv;
 bool overlayPacketInitialized = false;
 mutex keyboard_mutex;
 mutex overlay_mutex;
+mutex curInputMutex;
 
 
 
 void handleOnBlur(string formName, string inputName, double mouseX, double mouseY) {
+  curInputMutex.lock();
+    myfileLock.lock();
     if (DEBUG_MODE) myfile << "BLUR on form: " << formName << " input: " << inputName << " at: " << mouseX << ", " << mouseY << endl;
+    myfileLock.unlock();
     focusInput = make_pair("","");
     uint8_t b = 0;
     //KB.changeMode(&b, 1);
     sgx_status_t ret;
     onBlur(enclave_id, &ret); //ECALL
     cv.notify_all();
+  curInputMutex.unlock();
 }
 
 
 void handleOnFocus(string formName, string inputName, double x, double y, double h, double w) {
     //sendMessage("{message: Hello from EM}");
+    curInputMutex.lock();
     x *= SCALE_X;
     y *= SCALE_Y;
     h *= SCALE_Y;
     w *= SCALE_X;
-
+    myfileLock.lock();
     if (DEBUG_MODE) myfile << "FOCUS on form: " << formName << " input: " << inputName << " at: "
         << x << ", " << y 
     << " width: " << w 
     << " height: " << h << endl;
+    myfileLock.unlock();
 
     focusInput = make_pair(formName,inputName);
     uint8_t b = 1;
@@ -327,6 +340,7 @@ void handleOnFocus(string formName, string inputName, double x, double y, double
     sgx_status_t ret;
     onFocus(enclave_id, &ret, formName.c_str(), inputName.c_str(), 
         (uint16_t)x, (uint16_t)y, (uint16_t)w, (uint16_t)h); //ECALL
+    curInputMutex.unlock();
     cv.notify_all();
 }
 
@@ -338,12 +352,12 @@ void addForm(vector<string> argv) {
     string origin = argv[3];
     uint16_t formX = (uint16_t)(stod(argv[4], NULL)*SCALE_X);
     uint16_t formY = (uint16_t)(stod(argv[5], NULL)*SCALE_Y);
-    myfile << "ADD FORM (x,y): (" << formX << "," << formY << ")" << endl; 
+    //myfile << "ADD FORM (x,y): (" << formX << "," << formY << ")" << endl; 
     add_form(enclave_id, &ret, name.c_str(), name.length()+1, 
         origin.c_str(), origin.length()+1, formX, formY); //ECALL
     if (ret != SGX_SUCCESS) myfile << "!!!add_form ecall FAILED" << endl;
 	
-	myfile << "ADD FORM with name: " << name  << " signature: " << signature << endl;
+	//myfile << "ADD FORM with name: " << name  << " signature: " << signature << endl;
 	for (int i = 6; i < argv.size(); i+=5) {
         string inputName = argv[i];
         uint16_t w = (uint16_t)(stod(argv[i+1], NULL)*SCALE_X);
@@ -352,13 +366,13 @@ void addForm(vector<string> argv) {
         uint16_t y = (uint16_t)(stod(argv[i+4], NULL)*SCALE_Y);
         //uint16_t x = 0;
         //uint16_t y = 0;
-        if (DEBUG_MODE) myfile << "\tADD INPUT: " << inputName << " (" << x << "," << y << ") " << endl;
-        if (!(i+5 < argv.size())) myfile << "RUNNING VALIDATION" << endl;
+        //if (DEBUG_MODE) myfile << "\tADD INPUT: " << inputName << " (" << x << "," << y << ") " << endl;
+        //if (!(i+5 < argv.size())) myfile << "RUNNING VALIDATION" << endl;
         add_input(enclave_id, &ret, name.c_str(), name.length()+1, inputName.c_str(), inputName.length()+1,
                     (uint8_t*)(signature.c_str()), signature.length()+1, 
                     (i+5 < argv.size()) ? 0 : 1, x, y, h, w); //ECALL
                     //0,x,y,h,w);
-        if (ret != SGX_SUCCESS) myfile << "!!!add_input ecall FAILED" << endl;
+        //if (ret != SGX_SUCCESS) myfile << "!!!add_input ecall FAILED" << endl;
 
 	}
 }
@@ -367,10 +381,10 @@ void addScript(string signature, string name) {
   //verification
   string gen_sign="Kg7eVNk&3L";//sgx_funct(name);
   if(gen_sign==signature){
-    if (DEBUG_MODE) myfile << "ADD SCRIPT with signature: " << signature << "\ncode: " << name << endl;
+    //if (DEBUG_MODE) myfile << "ADD SCRIPT with signature: " << signature << "\ncode: " << name << endl;
 }
 else{
-    if (DEBUG_MODE) myfile << "signature did not match\n ";
+    //if (DEBUG_MODE) myfile << "signature did not match\n ";
 
 }
 
@@ -380,18 +394,18 @@ else{
 
 void initializeEnclave(string origin) {
 	//TO DO: write code to initialize an enclave, should be similar to SampleEnclave init()
-	if (DEBUG_MODE) myfile << "INIT enclave with origin: " << origin << endl;
+	//if (DEBUG_MODE) myfile << "INIT enclave with origin: " << origin << endl;
 }
 
 void terminateEnclave(string origin) {
 	//TO DO: write code to terminate an enclave
     sgx_destroy_enclave(enclave_id);
-	if (DEBUG_MODE) myfile << "TERMINATE enclave with id: " << enclave_id << endl;
+	//if (DEBUG_MODE) myfile << "TERMINATE enclave with id: " << enclave_id << endl;
 }
 void submitHttpReq(string request) {
 
 	//TO DO: needs to forward request to the extension
-	if (DEBUG_MODE) myfile << "sending HTTP request: " << request << endl;
+	//if (DEBUG_MODE) myfile << "sending HTTP request: " << request << endl;
 }
 
 static const std::string base64_chars = 
@@ -480,7 +494,7 @@ void parseScript(string message) {
 	}
 	for (int i = 0; i < argv.size()/2; i++) {
 		addScript(argv[i*2], argv[i*2+1]);
-		myfile << "\n\n\n";
+		//myfile << "\n\n\n";
 	}
 }
 
@@ -544,88 +558,95 @@ bool parseMessage(string message) {
       case SHUTDOWN_EM:
       return false;
   }
-  myfile << "\n\n";
+  //myfile << "\n\n";
   if (eventsUntilCloseLog == 0) {
       return false;
   }
   return true;
 }
 
+
 void sendToDisplay() {
-	myfile << "CREATED BT THREAD";
+  threadSafePrint("CREATED BT THREAD");
 	BluetoothChannel connection;
 	ofstream em_times("em_bt_times.csv");
 	int numPacketsSent = 0;
 	if (connection.channel_open() < 0) {
-        myfile << "FAILED BT CONNECT" << endl;
+        threadSafePrint("FAILED BT CONNECT");
         myfile.close();
         return;
     }
-    myfile << "BT CONNECTED" << endl;
+    threadSafePrint("BT CONNECTED");
     uint8_t outBuff[524288];
     mutex overlayInit_mutex;
     unique_lock<mutex> lk(overlayInit_mutex);
-    overlaycv.wait(lk,[]{return overlayPacketInitialized;});
-    myfile << "overlayPacketInitialized: " << overlayPacketInitialized << endl;
-    while(true) {
-
-    	overlay_mutex.lock();
-    	uint32_t out_len = sharedOutLen;
-    	memcpy(outBuff, sharedOverlayPacket, out_len);
-    	overlay_mutex.unlock();
+    uint32_t out_len;
+    while(true) {      
+      overlaycv.wait(lk,[]{return overlayPacketInitialized;});
+      overlay_mutex.lock();
+      out_len = sharedOutLen;
+      memcpy(outBuff, sharedOverlayPacket, out_len);
+      overlayPacketInitialized = false;
+      overlay_mutex.unlock();
 
     	TimeVar btsendStart = timeNow();
+
     	em_times << "bluetooth send," << absTime() << endl;
-        if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
-            myfile << "BT FAILED TO SEND PACKET\n" << endl;
-        } else {
-        	myfile << "BT SENT PACKET time elapsed: " << duration(timeNow() - btsendStart) << " num packets sent: " << numPacketsSent << endl << endl;
-        	numPacketsSent++;
-        }
-        em_times << "bluetooth sent," << absTime() << endl;
+      if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
+        threadSafePrint("BT FAILED TO SEND PACKET\n");
+      } else {
+        auto dur = chrono::duration_cast<chrono::microseconds>(timeNow() - btsendStart);
+        threadSafePrint("BT SENT PACKET time elapsed: " + to_string(dur.count()) + " num packets sent: " + to_string(numPacketsSent));
+        numPacketsSent++;
+      }
+      em_times << "bluetooth sent," << absTime() << endl;
+      usleep(300000);
     }
+    
 }
 
 void listenForKeyboard() {
 	ofstream em_times("em_kb_times.csv");
 	int numPacketsSent = 0;
-    myfile << "CREATED KEYBOARD THREAD" << endl;
+    threadSafePrint("CREATED KB THREAD");
     
     uint8_t keyboardBuff[58] = {0};
     while(true) {
         unique_lock<mutex> lk(keyboard_mutex);
         cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
+
+        curInputMutex.lock();        
+
         uint8_t outBuff[524288];
         uint32_t out_len;
+        TimeVar createTime = timeNow();
         em_times << "create_add_overlay_msg ECALL," << absTime() << endl;
         create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
         em_times << "create_add_overlay_msg ERET," << absTime() << endl;
+        auto dur = chrono::duration_cast<chrono::microseconds>(timeNow() - createTime);
+        threadSafePrint("ECALL(DS) got new overlay from enclave for form: " + focusInput.first + ", time: " + to_string(dur.count()));
+
+        curInputMutex.unlock();
 
         overlay_mutex.lock();
         memcpy(sharedOverlayPacket, outBuff, out_len);
         sharedOutLen = out_len;
         overlayPacketInitialized = true;
         overlaycv.notify_all();
-        myfile << "NOTIFYING THAT PACKET IS READY" << endl;
         overlay_mutex.unlock();
 
         em_times << "getEncryptedKeyboardInput call," << absTime() << endl;
         int enc_bytes = KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
         em_times << "getEncryptedKeyboardInput ret," << absTime() << endl;
         
-        if (enc_bytes <= 0) {
-            myfile << "TIMEOUT on encrypted input" << endl;
-        }
-        else
-        {
-            uint8_t bytebuff[29];
-            hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
-            sgx_status_t ret;
-            TimeVar kbsendStart = timeNow();
-            em_times << "get_keyboard_chars ECALL," << absTime() << endl;
-            get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
-            em_times << "get_keyboard_chars ERET," << absTime() << endl;
-        }
+        uint8_t bytebuff[29];
+        hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
+        sgx_status_t ret;
+
+        em_times << "get_keyboard_chars ECALL," << absTime() << endl;
+        get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
+        em_times << "get_keyboard_chars ERET," << absTime() << endl;
+        threadSafePrint("ECALL(KB) sent newchar to enclave");
     }
     //uint32_t out_len;
     //uint8_t outBuff[524288];
@@ -646,6 +667,7 @@ void listenForKeyboard() {
 #define _T(x) x
 int main(int argc, char* argv[])
 {
+    myfile.open ("debug_log.txt");
     int ret = 0;
     ra_samp_request_header_t *p_msg0_full = NULL;
     ra_samp_response_header_t *p_msg0_resp_full = NULL;
@@ -1170,8 +1192,7 @@ if(argc > 2)
     // enclave manager main code
 	  ////fprintf(stdout, "\n help");
 
-    myfile.open ("debug_log.txt");
-    myfile << "hello from the enclave manager!\n\n";
+    
 
     std::string code = "local_storage_data = {}; var x = 1; local_storage_data[\"test\"] = x;print(x);print(JSON.stringify(local_storage_data, undefined));";
     //std::string code = "var test = {\"b\":\"c\"}; var s = JSON.stringify(test, undefined); var t = eval(s); print(t['b']);";
@@ -1203,7 +1224,7 @@ if(argc > 2)
           length = length | (read_char << i*8);
       }
 
-      myfile << "js length: " << length <<endl;
+      //myfile << "js length: " << length <<endl;
 
       string msg = "";
 
