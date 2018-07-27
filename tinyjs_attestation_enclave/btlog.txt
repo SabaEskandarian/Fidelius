@@ -1,0 +1,164 @@
+trying to open channel
+bt scan set to 0
+opening socket
+socket opened, returning normally
+send len: 1538
+0th packet sent, write() returned 1538
+send len: 1538
+1th packet sent, write() returned 1538
+send len: 1538
+2th packet sent, write() returned 1538
+send len: 1538
+3th packet sent, write() returned 1538
+send len: 1538
+4th packet sent, write() returned 1538
+send len: 1538
+5th packet sent, write() returned 1538
+send len: 1538
+6th packet sent, write() returned 1538
+send len: 1538
+7th packet sent, write() returned 1538
+send len: 1538
+8th packet sent, write() returned 1538
+send len: 1538
+9th packet sent, write() returned 1538
+send len: 1538
+10th packet sent, write() returned 1538
+send len: 1538
+11th packet sent, write() returned 1538
+send len: 1538
+12th packet sent, write() returned 1538
+send len: 1538
+13th packet sent, write() returned 1538
+send len: 1538
+14th packet sent, write() returned 1538
+send len: 1538
+15th packet sent, write() returned 1538
+send len: 1538
+16th packet sent, write() returned 1538
+send len: 1538
+17th packet sent, write() returned 1538
+send len: 1538
+18th packet sent, write() returned 1538
+send len: 1538
+19th packet sent, write() returned 1538
+send len: 1538
+20th packet sent, write() returned 1538
+send len: 1538
+21th packet sent, write() returned 1538
+send len: 1538
+22th packet sent, write() returned 1538
+send len: 1538
+23th packet sent, write() returned 1538
+send len: 1538
+24th packet sent, write() returned 1538
+send len: 1538
+25th packet sent, write() returned 1538
+send len: 1538
+26th packet sent, write() returned 1538
+send len: 1538
+27th packet sent, write() returned 1538
+send len: 1538
+28th packet sent, write() returned 1538
+send len: 1538
+29th packet sent, write() returned 1538
+send len: 1538
+30th packet sent, write() returned 1538
+send len: 1538
+31th packet sent, write() returned 1538
+send len: 1538
+32th packet sent, write() returned 1538
+send len: 1538
+33th packet sent, write() returned 1538
+send len: 1538
+34th packet sent, write() returned 1538
+send len: 1538
+35th packet sent, write() returned 1538
+send len: 1538
+36th packet sent, write() returned 1538
+send len: 1538
+37th packet sent, write() returned 1538
+send len: 1538
+38th packet sent, write() returned 1538
+send len: 1538
+39th packet sent, write() returned 1538
+send len: 1538
+40th packet sent, write() returned 1538
+send len: 1538
+41th packet sent, write() returned 1538
+send len: 1538
+42th packet sent, write() returned 1538
+send len: 1538
+43th packet sent, write() returned 1538
+send len: 1538
+44th packet sent, write() returned 1538
+send len: 1538
+45th packet sent, write() returned 1538
+send len: 1538
+46th packet sent, write() returned 1538
+send len: 1538
+47th packet sent, write() returned 1538
+send len: 1538
+48th packet sent, write() returned 1538
+send len: 1538
+49th packet sent, write() returned 1538
+send len: 1538
+50th packet sent, write() returned 1538
+send len: 1538
+51th packet sent, write() returned 1538
+send len: 1538
+52th packet sent, write() returned 1538
+send len: 1538
+53th packet sent, write() returned 1538
+send len: 1538
+54th packet sent, write() returned 1538
+send len: 1538
+55th packet sent, write() returned 1538
+send len: 1538
+56th packet sent, write() returned 1538
+send len: 1538
+57th packet sent, write() returned 1538
+send len: 1538
+58th packet sent, write() returned 1538
+send len: 1538
+59th packet sent, write() returned 1538
+send len: 1538
+60th packet sent, write() returned 1538
+send len: 1538
+61th packet sent, write() returned 1538
+send len: 1538
+62th packet sent, write() returned 1538
+send len: 1538
+63th packet sent, write() returned 1538
+send len: 1538
+64th packet sent, write() returned 1538
+send len: 1538
+65th packet sent, write() returned 1538
+send len: 1538
+66th packet sent, write() returned 1538
+send len: 1538
+67th packet sent, write() returned 1538
+send len: 1538
+68th packet sent, write() returned 1538
+send len: 1538
+69th packet sent, write() returned 1538
+send len: 1538
+70th packet sent, write() returned 1538
+send len: 1538
+71th packet sent, write() returned 1538
+send len: 1538
+72th packet sent, write() returned 1538
+send len: 1538
+73th packet sent, write() returned 1538
+send len: 1538
+74th packet sent, write() returned 1538
+send len: 1538
+75th packet sent, write() returned 1538
+send len: 1538
+76th packet sent, write() returned 1538
+send len: 1538
+77th packet sent, write() returned 1538
+send len: 1538
+78th packet sent, write() returned 1538
+send len: 1538
+79th packet sent, write() returned 1538
