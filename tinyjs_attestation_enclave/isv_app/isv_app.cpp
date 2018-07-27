@@ -320,7 +320,6 @@ mutex keyboard_mutex;
 mutex overlay_mutex;
 mutex curInputMutex;
 
-<<<<<<< HEAD
 
 
 void handleOnBlur(string formName, string inputName, double mouseX, double mouseY) {
@@ -418,7 +417,6 @@ void addScript(string signature, string name)
             myfile << "signature did not match\n ";
     }
 }
->>>>>>> 25f26153dd9183baa2b4edd807712e89dbb8446d
 
 void initializeEnclave(string origin)
 {
@@ -447,21 +445,6 @@ static const std::string base64_chars =
     "abcdefghijklmnopqrstuvwxyz"
     "0123456789+/";
 
-void initializeEnclave(string origin) {
-	//TO DO: write code to initialize an enclave, should be similar to SampleEnclave init()
-	//if (DEBUG_MODE) myfile << "INIT enclave with origin: " << origin << endl;
-}
-
-void terminateEnclave(string origin) {
-	//TO DO: write code to terminate an enclave
-    sgx_destroy_enclave(enclave_id);
-	//if (DEBUG_MODE) myfile << "TERMINATE enclave with id: " << enclave_id << endl;
-}
-void submitHttpReq(string request) {
-
-	//TO DO: needs to forward request to the extension
-	//if (DEBUG_MODE) myfile << "sending HTTP request: " << request << endl;
-}
 
 static inline bool is_base64(unsigned char c)
 {
