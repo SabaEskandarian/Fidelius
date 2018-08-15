@@ -65,6 +65,7 @@ typedef struct form
 
 
 void printf_enc(const char *fmt, ...);
+void printf_time(const char *fmt, ...);
 std::string intToString(int i);
 
 

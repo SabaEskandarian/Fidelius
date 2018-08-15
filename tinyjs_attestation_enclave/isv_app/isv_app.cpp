@@ -94,6 +94,7 @@ typedef std::chrono::high_resolution_clock::time_point TimeVar;
 #define timeNow() std::chrono::high_resolution_clock::now()
 #define absTime() std::chrono::duration_cast<std::chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count()
 #define ENCLAVE_PATH "isv_enclave.signed.so"
+#define ADD_OVERLAY_HDR_LEN 16
 
 sgx_enclave_id_t enclave_id;
 
@@ -110,7 +111,9 @@ using namespace std;
 
 KeyboardDriver KB("/dev/ttyACM0", "/dev/ttyACM1");
 ofstream myfile;
+ofstream em_timestamps("em_timestamps.csv");
 mutex myfileLock;
+mutex timesLock;
 
 
 void threadSafePrint(string str) {
@@ -118,6 +121,12 @@ void threadSafePrint(string str) {
   myfile << str << endl;
   myfile.flush();
   myfileLock.unlock();
+}
+
+void printToTimes(string str) {
+  timesLock.lock();
+  em_timestamps << str << "," << absTime() << endl; 
+  timesLock.unlock();
 }
 
 
@@ -187,6 +196,11 @@ void ocall_read_file(const char *fname, char *data, size_t len)
 void ocall_print_string(const char *str)
 {
    threadSafePrint(str);
+}
+
+void ocall_print_time(const char *str)
+{
+   printToTimes(str);
 }
 
 sgx_status_t enc_make_http_request(const char *method, const char *url,
@@ -289,7 +303,7 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 
 // enclave manager required functions
 
-bool DEBUG_MODE = 0;
+bool DEBUG_MODE = 1;
 bool NODEVICES_MODE = 0;
 
 #define ON_BLUR 0
@@ -359,6 +373,8 @@ void handleOnFocus(string formName, string inputName, double x, double y, double
     sgx_status_t ret;
     onFocus(enclave_id, &ret, formName.c_str(), inputName.c_str(), 
           (uint16_t)x, (uint16_t)y, (uint16_t)w, (uint16_t)h); //ECALL
+    if (ret != SGX_SUCCESS) 
+        myfile << "onFocus ecall FAILED" << endl;
     curInputMutex.unlock();
     cv.notify_all();
 }
@@ -608,6 +624,10 @@ bool parseMessage(string message)
     return true;
 }
 
+string getPacketStr(uint8_t *outBuff) {
+    return (char*)outBuff + ADD_OVERLAY_HDR_LEN;
+}
+
 void sendToDisplay()
 {
     if (NODEVICES_MODE) {
@@ -636,19 +656,19 @@ void sendToDisplay()
       memcpy(outBuff, sharedOverlayPacket, out_len);
       overlayPacketInitialized = false;
       overlay_mutex.unlock();
+    	//TimeVar btsendStart = timeNow();
 
-    	TimeVar btsendStart = timeNow();
-
-    	em_times << "bluetooth send," << absTime() << endl;
+    	//em_times << "bluetooth send pk: " << getPacketStr(outBuff) << "," << absTime() << endl;
+      //threadSafePrint("sending pack: " + getPacketStr(outBuff));
       if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
-        threadSafePrint("BT FAILED TO SEND PACKET\n");
+        //threadSafePrint("BT FAILED TO SEND PACKET\n");
       } else {
-        auto dur = chrono::duration_cast<chrono::microseconds>(timeNow() - btsendStart);
-        threadSafePrint("BT SENT PACKET time elapsed: " + to_string(dur.count()) + " num packets sent: " + to_string(numPacketsSent));
+        //auto dur = chrono::duration_cast<chrono::microseconds>(timeNow() - btsendStart);
+        //threadSafePrint("BT SENT PACKET time elapsed: " + to_string(dur.count()) + " num packets sent: " + to_string(numPacketsSent));
         numPacketsSent++;
       }
       em_times << "bluetooth sent," << absTime() << endl;
-      usleep(300000);
+      usleep(170000);
     }
     
 }
@@ -659,12 +679,9 @@ void listenForKeyboard()
     if (NODEVICES_MODE) {
         return;
     }
-
     ofstream em_times("em_kb_times.csv");
     int numPacketsSent = 0;
     threadSafePrint("CREATED KB THREAD");
-
-    uint8_t keyboardBuff[58] = {0};
     while (true)
     {
         unique_lock<mutex> lk(keyboard_mutex);
@@ -674,12 +691,12 @@ void listenForKeyboard()
 
         uint8_t outBuff[524288];
         uint32_t out_len;
-        TimeVar createTime = timeNow();
+        //TimeVar createTime = timeNow();
         em_times << "create_add_overlay_msg ECALL," << absTime() << endl;
         create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
         em_times << "create_add_overlay_msg ERET," << absTime() << endl;
-        auto dur = chrono::duration_cast<chrono::microseconds>(timeNow() - createTime);
-        threadSafePrint("ECALL(DS) got new overlay from enclave for form: " + focusInput.first + ", time: " + to_string(dur.count()));
+        //auto dur = chrono::duration_cast<chrono::microseconds>(timeNow() - createTime);
+        //threadSafePrint("ECALL(DS) got new overlay from enclave for form: " + focusInput.first + ", time: " + to_string(dur.count()));
 
         curInputMutex.unlock();
 
@@ -690,6 +707,7 @@ void listenForKeyboard()
         overlaycv.notify_all();
         overlay_mutex.unlock();
 
+        uint8_t keyboardBuff[58] = {0};
         em_times << "getEncryptedKeyboardInput call," << absTime() << endl;
         int enc_bytes = KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
         em_times << "getEncryptedKeyboardInput ret," << absTime() << endl;
@@ -698,10 +716,15 @@ void listenForKeyboard()
         hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
         sgx_status_t ret;
 
-        em_times << "get_keyboard_chars ECALL," << absTime() << endl;
+        //em_times << "get_keyboard_chars ECALL," << absTime() << endl;
+        printToTimes("sent encrypted char to enc");
         get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
+        if (ret != SGX_SUCCESS) 
+          //threadSafePrint("ERROR DECRYPTING CHAR");
+
+
         em_times << "get_keyboard_chars ERET," << absTime() << endl;
-        threadSafePrint("ECALL(KB) sent newchar to enclave");
+        //threadSafePrint("ECALL(KB) sent newchar to enclave");
     }
     //uint32_t out_len;
     //uint8_t outBuff[524288];

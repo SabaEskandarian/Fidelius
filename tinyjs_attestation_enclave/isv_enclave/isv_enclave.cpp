@@ -302,6 +302,16 @@ void printf_enc(const char *fmt, ...)
     ocall_print_string(buf);
 }
 
+void printf_time(const char *fmt, ...)
+{
+    char buf[BUFSIZ] = {'\0'};
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, BUFSIZ, fmt, ap);
+    va_end(ap);
+    ocall_print_time(buf);
+}
+
 std::string intToString(int i)
 {
     char buf[20];
@@ -1141,17 +1151,20 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     {                   //letter z
         p_char[0] = -1; //basically doing nothing
     }
-    else if (p_char[0] == 0x7f)
+    else if (p_char[0] == 0x71)
     {
         if (curInput.value.length() != 0)
         {
             curInput.value = curInput.value.substr(0, curInput.value.length() - 1);
         }
     }
-    else
+    else if (p_char[0] != 0)
     {
-        printf_enc("DETECTED KEY PRESS: %d", p_char[0]);
         curInput.value += p_char[0];
+        printf_time("added ch to enc buffer: %s", curInput.value.c_str());
+        printf_enc("adding ch tp enc buffer: %c", p_char[0]);
+    } else if (p_char[0] == 0) {
+        printf_enc("detected an issue with decryption, not adding this char to our string");
     }
     printf_enc("KEYBOARD: Form name = %s Input name = %s, value = %s",curForm.name.c_str(), curInput.name.c_str(),  curInput.value.c_str());
     //printf_enc("KEYBOARD: Input Field X = %d", curInput.x);
@@ -1164,9 +1177,13 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
 
     std::string fname = "loginform";
     std::string iname = "username";
-    printf_enc("BEFORE ADDKEY data for loginform: username: %s", forms[fname].inputs[iname].value.c_str());
+    std::string iname2 = "password";
+    //printf_enc("BEFORE ADDKEY data for loginform: username: %s", forms[fname].inputs[iname].value.c_str());
+    //printf_enc("BEFORE ADDKEY data for loginform: password: %s", forms[fname].inputs[iname2].value.c_str());
     forms[curForm.name].inputs[curInput.name] = curInput;
-    printf_enc("AFTER ADDKEY data for loginform: username: %s", forms[fname].inputs[iname].value.c_str());
+    //printf_enc("AFTER ADDKEY data for loginform: username: %s", forms[fname].inputs[iname].value.c_str());
+    //printf_enc("AFTER ADDKEY data for loginform: password: %s", forms[fname].inputs[iname2].value.c_str());
+
     sgx_thread_mutex_unlock(curInputMutex);
     return status;
 }

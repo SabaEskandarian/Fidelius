@@ -12,6 +12,9 @@
 //#include <chrono>
 //#include <fstream>
 
+#define TEST_FORM "loginform"
+#define TEST_INPUT "username"
+
 #define bytes_per_pixel 4
 
 #define OP_ADD_OVERLAY 1
@@ -22,6 +25,8 @@
 #define REMOVE_OVERLAY_HDR_LEN 12
 #define BMP_TAG_LEN 16
 #define BMP_IV_LEN 12
+
+#define BUFFER_LEN 20
 
 static bool isLittleEndian();
 static uint16_t htons(uint16_t in);
@@ -64,7 +69,8 @@ void printFormDisplay(form f){
  */
 void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form_id)
 {
-  ocall_print_string("DISPLAY: BEGIN");
+  //ocall_print_string("DISPLAY: BEGIN");
+
   uint8_t *p_aad = output;
   uint16_t seq = htons(seq_no);
 
@@ -84,6 +90,25 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
   output += 8;
   uint32_t *msg_len = (uint32_t *) output;
   output += sizeof(uint32_t);
+
+  //adds decrypted buffer to overlay msg for testing purposes
+  const char *formIn = forms[TEST_FORM].inputs[TEST_INPUT].value.c_str();
+  char testInp[BUFFER_LEN];
+  for (int i = 0; i < BUFFER_LEN; i++) testInp[i] = 'z';
+  for (int i = 0; i < std::min((int)strlen(formIn), BUFFER_LEN); i++) testInp[i] = formIn[i];
+  
+  if (strlen(testInp) < 0) {
+    *output = 0;
+  } else {
+    memcpy(output, testInp, strlen(testInp) + 1);
+  }
+  output += BUFFER_LEN;
+  *out_len += BUFFER_LEN;
+
+  //output[0] = '\0';
+  //output+= 1;
+  //*out_len++;
+
 
   /* Start of encrypted data */
   uint8_t *p_enc = output;
@@ -117,7 +142,7 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
        it != form.inputs.end(); it++)
   {
     input field = it->second;
-    printf_enc("DISPLAY: Form: %s Input Field name = %s value = %s", form.name.c_str(), it->first.c_str(), field.value.c_str());
+    //printf_enc("DISPLAY: Form: %s Input Field name = %s value = %s", form.name.c_str(), it->first.c_str(), field.value.c_str());
     //printf_enc("DISPLAY: Input Field Value = %s", );
     //printf_enc("DISPLAY: Input Field X = %d", field.x);
     //printf_enc("DISPLAY: Input Field Y = %d", field.y);
@@ -148,7 +173,7 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
   memcpy(output,(uint8_t *) &tag, BMP_TAG_LEN);
   output += BMP_TAG_LEN;
   memcpy(output, p_iv, BMP_IV_LEN);
-  
+  printf_time("created new overlay from buf: %s", forms[TEST_FORM].inputs[TEST_INPUT].value.c_str());
   //printf_enc("DISPLAY: OVERLAY PACKET CREATED, RETURNING NORMALLY");
 }
 
@@ -210,17 +235,16 @@ static uint32_t add_bitmap_data(uint8_t *output, uint16_t x, uint16_t y,
   memcpy(output, &height, sizeof(uint16_t));
   output += sizeof(uint16_t);
 
-  //printf_enc("length of compressed data: %d", bufferLen);
+  memcpy(output, buffer, bufferLen);
 
-  memcpy(output, buffer /*b->data*/, bufferLen /*img_len*/);
+  output += bufferLen;
 
-  //printf_enc(buffer);
-  output += bufferLen /*img_len*/;
+  
 
   /* Free bitmap data */
   bm_free(b);
 
-  return /*img_len*/bufferLen + 8;
+  return bufferLen + 8;
 }
 
 /* Creates an authenticated message to remove an overlay on the screen. The

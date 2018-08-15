@@ -25,11 +25,13 @@ REMOVE_OVERLAY_HDR_LEN = 12
 TOKEN_LEN = 8
 TAG_LEN = 16
 IV_LEN = 12
+BUFFER_LEN = 20
 
 # Op codes (byte 3)
 OP_ADD_OVERLAY = 1
 OP_REMOVE_OVERLAY = 2
 OP_CLEAR_OVERLAYS = 3
+
 
 
 
@@ -94,10 +96,14 @@ def receive_bluetooth():
 
 def decrypt_message (msg):
     seq_no, op, o_id = unpack('!HBB', msg[0:BASE_HDR_LEN])
+    #newmsg = list(msg[BASE_HDR_LEN:BASE_HDR_LEN+30])
+    #inpValue = newmsg[0:newmsg.index('\0')+1]
+    #logging.debug("inp val has len: {} {}".format(len(inpValue), newmsg.index('\0')))   
 
     if op == OP_ADD_OVERLAY:
+        inputVal = unpack('c'*BUFFER_LEN, msg[ADD_OVERLAY_HDR_LEN:ADD_OVERLAY_HDR_LEN+BUFFER_LEN])
         aad = msg[:ADD_OVERLAY_HDR_LEN]
-        ct = msg[ADD_OVERLAY_HDR_LEN:-IV_LEN];
+        ct = msg[ADD_OVERLAY_HDR_LEN+BUFFER_LEN:-IV_LEN];
         nonce = msg[-IV_LEN:]
        
     else:
@@ -110,7 +116,7 @@ def decrypt_message (msg):
     aesgcm = AESGCM (binascii.unhexlify(secret_key))
     try:
         plaintext = aesgcm.decrypt (nonce ,ct, None)
-        buf = buffer(aad + bytearray(plaintext))
+        buf = buffer(aad + bytearray(inputVal) + bytearray(plaintext))
         logging.debug('Received packet: {:5}, decryption passed'.format(seq_no))
     except:
         buf = None
@@ -137,11 +143,16 @@ def numBytesToEncodePixels(num):
     return num/8 + 1;
 
 def parse_message(msg, overlays):
-    logging.debug("length of message: {}".format(len(msg)))
     seq_no, op, o_id = unpack('!HBB', msg[0:BASE_HDR_LEN])
     if op == OP_ADD_OVERLAY:
+        #newmsg = list(msg[BASE_HDR_LEN:BASE_HDR_LEN+30])
+        #inpValue = newmsg[0:newmsg.index('\0')+1]
+        #logging.debug(inpValue)
         # Add the origin bitmap
-        field_iter = ADD_OVERLAY_HDR_LEN
+        inputVal = unpack('c'*BUFFER_LEN, msg[ADD_OVERLAY_HDR_LEN:ADD_OVERLAY_HDR_LEN+BUFFER_LEN])
+        #logging.debug("".join(inputVal))
+        field_iter = ADD_OVERLAY_HDR_LEN + BUFFER_LEN
+        
         x, y, width, height = unpack('!HHHH', msg[field_iter:field_iter+8])
         #RE-HYDRATE IMAGE BITMAP
         #logging.debug("getting encodedstring")
@@ -149,7 +160,7 @@ def parse_message(msg, overlays):
         ba = bitarray(endian='little')
         #logging.debug("making bitarray")
         ba.frombytes(encodedstring)
-        logging.debug("reinflating bitarray to RBG format") #this next step is the most expensive ~20 ms
+        #logging.debug("reinflating bitarray to RBG format") #this next step is the most expensive ~20 ms
         white = chr(255)
         black = chr(0)
         data = []
@@ -163,12 +174,13 @@ def parse_message(msg, overlays):
                 data.append(black)
                 data.append(black)
         #data = [[chr(255),chr(255),chr(255)] if bit == "1" else [chr(0),chr(0),chr(0)] for bit in ba.to01()]
-        logging.debug("flatening rgb data")
+        #logging.debug("flatening rgb data")
         #data = [c for d in data for c in d]
         #logging.debug("making image from bytes")
         img = Image.frombytes('RGB', (width, height), "".join(data))
 
         form = Form(o_id, x, y, img)
+        form.inputBuff = "".join(inputVal)
         field_iter += numBytesToEncodePixels(width*height) + 8
         # Add the field input bitmaps
         while(field_iter < len(msg)):
@@ -191,6 +203,7 @@ def parse_message(msg, overlays):
                     data.append(black)
                     data.append(black)
             #data = [c for d in data for c in d]
+            #logging.debug("w {} h {} d {}".format(width, height, len(data)))
             img = Image.frombytes('RGB', (width, height), "".join(data))
 
             form.fields.append(Field(x, y, img))
@@ -225,14 +238,15 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s %(message)s', stream=sys.stdout, level=logging.DEBUG)
 
     try:
-        logging.debug('Bluetooth starting')
-        server_sock, client_sock = init_bluetooth()
-        logging.debug('Bluetooth connected')
-
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.connect(server_addr)
         logging.debug('Connected to overlay server')
         
+        logging.debug('Bluetooth starting')
+        server_sock, client_sock = init_bluetooth()
+        logging.debug('Bluetooth connected')
+
+
         overlays = {}
 
         while True:
@@ -248,9 +262,10 @@ if __name__ == "__main__":
             if not msg:
                 logging.debug('Message malformed/message error')
                 continue
-
             # Decrypt and check the tag
-            display_times.write('bitmap decryption,%.9f\n' % (time.time()*1000))
+            inputVal = unpack('c'*BUFFER_LEN, msg[ADD_OVERLAY_HDR_LEN:ADD_OVERLAY_HDR_LEN+BUFFER_LEN])
+            display_times.write('bitmap received {},%.9f\n'.format("".join(inputVal)) % (time.time()*1000))
+            logging.debug("received bitmap with: {}".format("".join(inputVal)))
             msg = decrypt_message (msg)
             if not msg:
                 #logging.debug('Decryption failed')
@@ -258,8 +273,8 @@ if __name__ == "__main__":
             #logging.debug('Decryption passed')
             # Parse the message
             parse_message(msg, overlays)
-            logging.debug("pickling overlay")
-            data = pickle.dumps(overlays)
+            #logging.debug("pickling overlay")
+            data = pickle.dumps(overlays, -1)
             sock.send(data)
             #logging.debug('Sending overlays {}'.format(len(data)))
             
