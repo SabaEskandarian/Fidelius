@@ -109,7 +109,7 @@ uint8_t *attestation_msg_samples[] =
 
 using namespace std;
 
-KeyboardDriver KB("/dev/ttyACM0", "/dev/ttyACM1");
+KeyboardDriver KB("keyboard_test", "empty");
 ofstream myfile;
 ofstream em_timestamps("em_timestamps.csv");
 mutex myfileLock;
@@ -304,14 +304,15 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 // enclave manager required functions
 
 bool DEBUG_MODE = 1;
-bool NODEVICES_MODE = 0;
+bool NODEVICES_MODE = 1;
 
 #define ON_BLUR 0
 #define ON_FOCUS 1
 #define INITIALIZE_ENCLAVE 2
 #define ADD_FORM 3
 #define ADD_SCRIPT 4
-#define FORM_SUBMIT 5
+#define RUN_SCRIPT 10
+#define SUBMIT_FORM 5
 #define TERMINATE_ENCLAVE 6
 #define SUBMIT_HTTP_REQ 7
 #define SHUTDOWN_EM 8
@@ -389,14 +390,16 @@ void addForm(vector<string> argv)
 
     uint16_t formX = (uint16_t)(stod(argv[4], NULL)*SCALE_X);
     uint16_t formY = (uint16_t)(stod(argv[5], NULL)*SCALE_Y);
+    
+    string onsub = argv[6];
     //myfile << "ADD FORM (x,y): (" << formX << "," << formY << ")" << endl; 
     add_form(enclave_id, &ret, name.c_str(), name.length()+1, 
-             origin.c_str(), origin.length()+1, formX, formY); //ECALL
+             origin.c_str(), origin.length()+1, formX, formY, onsub.c_str(), onsub.length()+1); //ECALL
     if (ret != SGX_SUCCESS) 
         myfile << "!!!add_form ecall FAILED" << endl;
 	
 	//myfile << "ADD FORM with name: " << name  << " signature: " << signature << endl;
-	for (int i = 6; i < argv.size(); i+=5) 
+	for (int i = 7; i < argv.size(); i+=5) 
   {
       string inputName = argv[i];
       uint16_t w = (uint16_t)(stod(argv[i + 1], NULL) * SCALE_X);
@@ -417,21 +420,47 @@ void addForm(vector<string> argv)
           myfile << "!!!add_input ecall FAILED" << endl;
     }
 }
-void addScript(string signature, string name)
+void addScript(string sign, string script)
 {
-    //TO DO: make ecall for adding a form
-    //verification
-    string gen_sign = "Kg7eVNk&3L"; //sgx_funct(name);
-    if (gen_sign == signature)
-    {
-        if (DEBUG_MODE)
-            myfile << "ADD SCRIPT with signature: " << signature << "\ncode: " << name << endl;
-    }
-    else
-    {
-        if (DEBUG_MODE)
-            myfile << "signature did not match\n ";
-    }
+    sgx_status_t ret;
+    add_script(enclave_id, &ret, sign.c_str(), sign.length(), script.c_str(), script.length());
+    if (DEBUG_MODE)
+        myfile << "ADDED SCRIPT"<< endl;
+    if (ret != SGX_SUCCESS) 
+        myfile << "!!!add_script ecall FAILED" << endl;
+}
+
+//The second parameter should really be some kind of struct to take parameters 
+//for a function. Using the string as a placeholder for now. ~saba
+void runScript(string formName)
+{
+    sgx_status_t ret;
+    //call the onsubmit function for a form
+    //that's all we'll have for now in terms of ways to start running js
+    run_js(enclave_id, &ret, formName.c_str(), formName.length()+1);
+    
+    
+    /* from void handleFormSubmission(string formName)
+    sgx_status_t re;
+    uint32_t len;
+    form_len(enclave_id, &len, formName.c_str());
+    uint8_t form_buf[(len * 4)] = {0};
+    uint8_t mac[16] = {0};
+
+    myfile << "submitting form now!" << endl;
+    submit_form(enclave_id, &re, formName.c_str(), &form_buf[0], len, &mac[0]);
+    myfile << form_buf << endl;
+
+    string resultString = "{\"form_submit\" : \"";
+    resultString += base64_encode(reinterpret_cast<const unsigned char *>(form_buf), len);
+    resultString += "\"}";
+
+    myfile << "Result: " << resultString << endl;
+    ;
+
+    sendMessage(resultString);
+     */
+    
 }
 
 void initializeEnclave(string origin)
@@ -531,6 +560,7 @@ void handleFormSubmission(string formName)
     sendMessage(resultString);
 }
 
+/* I think this is no longer needed. ~saba
 void parseScript(string message)
 {
     vector<string> argv;
@@ -551,6 +581,7 @@ void parseScript(string message)
         myfile << "\n\n\n";
     }
 }
+*/
 
 bool parseMessage(string message)
 {
@@ -561,11 +592,11 @@ bool parseMessage(string message)
     char *comstr = &message.at(0);
     int command = atoi(comstr);
 
-    if (command == ADD_SCRIPT)
-    {
-        parseScript(message);
-        return true;
-    }
+    //if (command == ADD_SCRIPT)
+    //{
+    //    parseScript(message);
+    //    return true;
+    //}
     string delimiter = "\\n";
     size_t pos = 0;
     string token;
@@ -600,12 +631,17 @@ bool parseMessage(string message)
     case ADD_FORM:
         addForm(argv);
         break;
-    case FORM_SUBMIT:
+    case SUBMIT_FORM:
         myfile << "REQUESTED FORM SUBMIT" << endl;
         handleFormSubmission(argv[1]);
         break;
     case ADD_SCRIPT:
+        myfile << "ADDING SCRIPT" << endl;
         addScript(argv[1], argv[2]);
+        break;
+    case RUN_SCRIPT:
+        myfile << "REQUESTED FORM SUBMIT -- running script" << endl;
+        runScript(argv[1]);
         break;
     case TERMINATE_ENCLAVE:
         terminateEnclave(argv[1]);
