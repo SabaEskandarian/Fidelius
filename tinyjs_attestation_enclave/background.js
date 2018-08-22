@@ -23,7 +23,7 @@ function start() {
         });
 
         nativePort.onMessage.addListener(function(msg) {
-	  alert("hi2");
+	  //alert("hi2");
       	  console.log(msg);
       	  parserPort.postMessage(JSON.stringify(msg));
         });

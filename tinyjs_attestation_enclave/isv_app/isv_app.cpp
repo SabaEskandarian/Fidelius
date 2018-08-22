@@ -316,7 +316,7 @@ bool NODEVICES_MODE = 1;
 #define TERMINATE_ENCLAVE 6
 #define SUBMIT_HTTP_REQ 7
 #define SHUTDOWN_EM 8
-#define N_COMMANDS 9
+#define N_COMMANDS 11
 
 /*
 this ivar is for debugging only, it will close the debug

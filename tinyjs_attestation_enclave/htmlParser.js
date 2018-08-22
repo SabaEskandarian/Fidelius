@@ -201,8 +201,11 @@ function getInputs(form) {
 
       if (form.elements[i].hasAttribute("type")) {
     	if (form.elements[i].getAttribute("type") == "submit") {
-            if(!form.hasAttribute("onsubmit")){
+            if(!form.hasAttribute("onsubmit")){//normal submission
                 form.elements[i].addEventListener("click", formSubmission); 
+            }
+            else{//call script
+                form.elements[i].addEventListener("click", runJS);
             }
     	}
       }
@@ -245,7 +248,12 @@ function parseFormTags() {
 		console.log("Form x,y: " + formX + ", " + formY);
 		formString += formX + "\n";
 		formString += formY + "\n";
-        formString += form.getAttribute("onsubmit") + "\n";
+        if(form.hasAttribute("onsubmit")){
+            formString += form.getAttribute("onsubmit") + "\n";
+        }
+        else{
+            formString += " " + "\n";
+        }
 		getInputs(form);
 		formPort.postMessage(formString);
 		formString = "";
