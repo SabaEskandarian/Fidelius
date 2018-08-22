@@ -1112,9 +1112,9 @@ sgx_status_t run_js(const char *formName, size_t len)
      *
      */
     //also add loading/saving code
-    enc_code = "var str_data = __native_js_load_items(); var local_storage_data = eval(str_data);\n" + enc_code;
+    //enc_code = "var str_data = __native_js_load_items(); var local_storage_data = eval(str_data);\n" + enc_code;
     enc_code = str_forms + enc_code;
-    enc_code += "\nstr_data = JSON.stringify(local_storage_data, undefined); __native_js_save_items(str_data);";
+    //enc_code += "\nstr_data = JSON.stringify(local_storage_data, undefined); __native_js_save_items(str_data);";
 
     std::string res;
     CTinyJS *js = new CTinyJS();

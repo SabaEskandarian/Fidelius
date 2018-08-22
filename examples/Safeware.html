@@ -37,13 +37,24 @@ signature.js:2885 Signature: 123,75,110,242,57,192,50,125,54,78,72,61,251,226,11
 
     <script secure type="text/JavaScript" sign="placeholder">
         function runSafeware(){
+                //fix some inputs because I'm testing without the keyboard/display
+                update_form('safewareForm', 'input', 'tefd fdfdDARPAfd fdk');
+                update_form('safewareForm', 'matchString', 'DARPA');
+        
                 //read contents of input and matchString
+                var input = safewareForm.input;
+                var matchString = safewareForm.matchString;
                 
                 //see if there is a match
+                var match = input.indexOf(matchString);
                 
                 //update form accordingly
-        
-                update_form('safewareForm', 'output', 'no match');
+                if(match == -1){
+                    update_form('safewareForm', 'output', 'no match');
+                }
+                else{
+                    update_form('safewareForm', 'output', 'match!');
+                }
         }
         
         //other functions to use later for exercising various features
