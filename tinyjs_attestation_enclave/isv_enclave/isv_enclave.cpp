@@ -585,9 +585,10 @@ std::string parse_form(form f, bool include_vals)
 //copies a string into the enclave
 std::string copyString(const char *s, size_t len)
 {
-    char es_temp[len];
-    memcpy(es_temp, s, len);
-    std::string es = std::string(es_temp);
+    //char es_temp[len];
+    //memcpy(es_temp, s, len);
+    //std::string es = std::string(es_temp);
+    std::string es = s;
     return es;
 }
 
@@ -650,7 +651,8 @@ sgx_status_t add_script(const char* sign, int lenSign, const char* script, int l
     
     //add js to the big list of JS scripts.
     //for now they are all functions, so this is ok. need a different way in general ~saba
-    std::string newScript = copyString(script, lenScript);
+    std::string newScript(script);
+    //printf_enc("adding script: %s\n", newScript.c_str());
     scripts += newScript + "\n";
     
     return SGX_SUCCESS;
@@ -1070,11 +1072,13 @@ void js_dump(CScriptVar *v, void *userdata)
 //temp for safeware application
 //just because I don't have the i/o system
 //~saba
+/*
 void debug_print_form_contents(){
     printf_enc("input: %s\n", forms["safewareForm"].inputs["input"].value.c_str());
     printf_enc("matchString: %s\n", forms["safewareForm"].inputs["matchString"].value.c_str());
     printf_enc("output: %s\n", forms["safewareForm"].inputs["output"].value.c_str());
 }
+*/
 
 /*
     Runs a string of JS in the tinyJS enviornment. See documentation on tinyJS at
@@ -1085,9 +1089,8 @@ sgx_status_t run_js(const char *formName, size_t len)
 {
     std::string code = forms[formName].onsubmit;
     code += ";";
-    int codeLen = code.length()+1;
     
-    printf_enc("running js! %s length=%d", code, codeLen);
+    printf_enc("running js! %s", code);
     //return SGX_SUCCESS;
     //TODO:Saba: add in the scripts and one line to call the desired function for the form
     //also see what's already happening here 
@@ -1107,11 +1110,14 @@ sgx_status_t run_js(const char *formName, size_t len)
         str_forms += "var " + name + " = " + form + ";";
     }
 
-    char tmp[len];
-    memcpy(tmp, code.c_str(), codeLen);
-    std::string enc_code = std::string(tmp);
+    //char tmp[len];
+    //memcpy(tmp, code.c_str(), codeLen);
+    //std::string enc_code = std::string(tmp);
 
-
+    //printf_enc("scripts: %s\n", scripts.c_str());
+    //printf_enc("str_forms: %s\n", str_forms.c_str());
+    //printf_enc("code: %s\n", code.c_str());
+    
     /*
      * TODO: 
      * 
@@ -1121,8 +1127,11 @@ sgx_status_t run_js(const char *formName, size_t len)
      */
     //also add loading/saving code
     //enc_code = "var str_data = __native_js_load_items(); var local_storage_data = eval(str_data);\n" + enc_code;
-    enc_code = scripts +"\n"+str_forms + enc_code;
+    code = scripts +"\n"+str_forms + code;
     //enc_code += "\nstr_data = JSON.stringify(local_storage_data, undefined); __native_js_save_items(str_data);";
+    
+
+    //printf_enc("js code: %s", code.c_str());
 
     std::string res;
     CTinyJS *js = new CTinyJS();
@@ -1136,7 +1145,7 @@ sgx_status_t run_js(const char *formName, size_t len)
     js->addNative("function __native_js_save_items(data)", js_save_items, js);
     try
     {
-        js->execute(enc_code);
+        js->execute(code);
     }
     catch (CScriptException *e)
     {
@@ -1146,7 +1155,6 @@ sgx_status_t run_js(const char *formName, size_t len)
     //res = js->evaluate("result"); //note: result is just a variable defined in the code
     //memcpy(code, res.c_str(), res.length() + 1); 
     delete js;
-    debug_print_form_contents();
     return SGX_SUCCESS;
 }
 
