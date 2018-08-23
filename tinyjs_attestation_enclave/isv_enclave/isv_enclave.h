@@ -61,8 +61,8 @@ typedef struct form
     uint16_t x;
     uint16_t y;
     bool validated;
+    std::string onsubmit;
 } form;
-
 
 void printf_enc(const char *fmt, ...);
 void printf_time(const char *fmt, ...);

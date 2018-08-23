@@ -63,12 +63,16 @@ enclave {
                                             uint32_t secret_size,
                                             [in,count=16] uint8_t* gcm_mac);
 
-        public sgx_status_t run_js([in, out, size=len] char* code, size_t len, [in, size=len2] const uint8_t* code_sig, size_t len2);
+        //old run js
+        //public sgx_status_t run_js([in, out, size=len] char* code, size_t len, [in, size=len2] const uint8_t* code_sig, size_t len2);
+        public sgx_status_t run_js([in, size=len]const char *formName, size_t len);
 
-        public sgx_status_t add_form([in, size=len] const char* name, size_t len, [in, size=origin_len] const char* origin, size_t origin_len, uint16_t x, uint16_t y);
+        public sgx_status_t add_form([in, size=len] const char* name, size_t len, [in, size=origin_len] const char* origin, size_t origin_len, uint16_t x, uint16_t y, [in, size=onsubLen] const char* onsub, size_t onsubLen);
 
         public sgx_status_t add_input([in, size=len_form] const char* form_name, size_t len_form, [in, size=len_input] const char* input_name, size_t len_input, [in, size=sig_form_size] const uint8_t* sig_form, size_t sig_form_size, int validate, uint16_t x, uint16_t y, uint16_t height, uint16_t width);
 
+        public sgx_status_t add_script([in, size=lenSign]const char* sign, int lenSign, [in, size=lenScript]const char* script, int lenScript);
+        
         public sgx_status_t onFocus([in, string] const char* formName, [in, string] const char* inputName, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 
         public sgx_status_t onBlur();

@@ -523,6 +523,7 @@ static const input nullInput = {};
 
 //entry point to form datastructure
 std::map<std::string, form> forms;
+std::string scripts = "";
 
 //these track the form/input currently in focus
 form curForm = nullForm;
@@ -584,20 +585,21 @@ std::string parse_form(form f, bool include_vals)
 //copies a string into the enclave
 std::string copyString(const char *s, size_t len)
 {
-    char es_temp[len];
-    memcpy(es_temp, s, len);
-    std::string es = std::string(es_temp);
+    //char es_temp[len];
+    //memcpy(es_temp, s, len);
+    //std::string es = std::string(es_temp);
+    std::string es = s;
     return es;
 }
 
 /*
     Validates a form or JS program (or any arbitrary data, really). Validation
-    involves hashing the messagae and then verifiying that the signiture is valid.
+    involves hashing the message and then verifiying that the signiture is valid.
 
     Params:
         --p_message: a pointer to the data being validated
         --message_size: the length of the data
-        --p_signiture: a pointer to the signiture
+        --p_signature: a pointer to the signature
 */
 
 sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
@@ -635,9 +637,31 @@ sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
     return ret;
 }
 
+//add a new script
+sgx_status_t add_script(const char* sign, int lenSign, const char* script, int lenScript){
+    //verify signature
+    printf_enc("VALIDATING SCRIPT");
+    //copies how we do for forms. Might both be broken? ~saba
+    if (SGX_SUCCESS != validate((uint8_t *)script, lenScript, (sgx_ec256_signature_t *)sign))
+    {
+        //return failure
+        printf_enc("SCRIPT SIGNATURE DOES NOT MATCH");
+        //return SGX_ERROR_INVALID_PARAMETER;
+    }
+    
+    //add js to the big list of JS scripts.
+    //for now they are all functions, so this is ok. need a different way in general ~saba
+    std::string newScript(script);
+    //printf_enc("adding script: %s\n", newScript.c_str());
+    scripts += newScript + "\n";
+    
+    return SGX_SUCCESS;
+}
+
 //adds a new form to the map of forms
 sgx_status_t add_form(const char *name, size_t len,
-                      const char *this_origin, size_t origin_len, uint16_t x, uint16_t y)
+                      const char *this_origin, size_t origin_len, uint16_t x, uint16_t y, 
+                      const char* onsub, size_t onsubLen)
 {
 
 
@@ -660,11 +684,14 @@ sgx_status_t add_form(const char *name, size_t len,
     }
     else
     {
+        std::string onsubAction = copyString(onsub, onsubLen);
+        
         form new_form;
         new_form.name = eName;
         new_form.x = x;
         new_form.y = y;
         new_form.validated = false;
+        new_form.onsubmit = onsubAction;
         printf_enc("added new form: %s (%d,%d)", eName.c_str(), x, y);
         input new_input;
         new_input.value = eName;
@@ -729,18 +756,16 @@ sgx_status_t add_input(const char *form_name, size_t len_form, const char *input
             {
                 std::string form = parse_form(f, false);
                 printf_enc("VALIDATING: %s", form.c_str());
-                if (SGX_SUCCESS == validate((uint8_t *)form.c_str(), (uint32_t)form.length(), (sgx_ec256_signature_t *)p_sig_form))
-                {
-                    f.validated = true;
-                }
-                else
+                if (SGX_SUCCESS != validate((uint8_t *)form.c_str(), (uint32_t)form.length(), (sgx_ec256_signature_t *)p_sig_form))
                 {
                     // delete form, return failure
                     printf_enc("FORM SIGNATURE DOES NOT MATCH");
-                    f.validated = true;
+                    f.validated = false;
                     //forms.erase((std::string) formName);
                     //return SGX_ERROR_INVALID_PARAMETER;
                 }
+                //this next line won't be called if the preceding return is uncommented
+                f.validated = true;
             }
             it->second = f;
             return SGX_SUCCESS;
@@ -1043,20 +1068,33 @@ void js_dump(CScriptVar *v, void *userdata)
     js->root->trace(">  ");
 }
 
+
+//temp for safeware application
+//just because I don't have the i/o system
+//~saba
+/*
+void debug_print_form_contents(){
+    printf_enc("input: %s\n", forms["safewareForm"].inputs["input"].value.c_str());
+    printf_enc("matchString: %s\n", forms["safewareForm"].inputs["matchString"].value.c_str());
+    printf_enc("output: %s\n", forms["safewareForm"].inputs["output"].value.c_str());
+}
+*/
+
 /*
     Runs a string of JS in the tinyJS enviornment. See documentation on tinyJS at
     https://github.com/gfwilliams/tiny-js/tree/56a0c6d92b5ced9d8b2ade32eec5ddfdfdb49ef5
 
 */
-sgx_status_t run_js(char *code, size_t len, const uint8_t *p_sig_code, size_t len_sig)
+sgx_status_t run_js(const char *formName, size_t len)
 {
-
-    //comment this out to avoid validation while debugging
-    if (SGX_SUCCESS != validate((uint8_t *)code, (uint32_t)len, (sgx_ec256_signature_t *)p_sig_code))
-    {
-        return SGX_ERROR_INVALID_PARAMETER;
-    }
-
+    std::string code = forms[formName].onsubmit;
+    code += ";";
+    
+    printf_enc("running js! %s", code);
+    //return SGX_SUCCESS;
+    //TODO:Saba: add in the scripts and one line to call the desired function for the form
+    //also see what's already happening here 
+    
     //parse forms and add them as objects to the start of the JS code
     std::string str_forms = "";
     for (std::map<std::string, form>::iterator it = forms.begin();
@@ -1072,11 +1110,14 @@ sgx_status_t run_js(char *code, size_t len, const uint8_t *p_sig_code, size_t le
         str_forms += "var " + name + " = " + form + ";";
     }
 
-    char tmp[len];
-    memcpy(tmp, code, len);
-    std::string enc_code = std::string(tmp);
+    //char tmp[len];
+    //memcpy(tmp, code.c_str(), codeLen);
+    //std::string enc_code = std::string(tmp);
 
-
+    //printf_enc("scripts: %s\n", scripts.c_str());
+    //printf_enc("str_forms: %s\n", str_forms.c_str());
+    //printf_enc("code: %s\n", code.c_str());
+    
     /*
      * TODO: 
      * 
@@ -1085,9 +1126,12 @@ sgx_status_t run_js(char *code, size_t len, const uint8_t *p_sig_code, size_t le
      *
      */
     //also add loading/saving code
-    enc_code = "var str_data = __native_js_load_items(); var local_storage_data = eval(str_data);\n" + enc_code;
-    enc_code = str_forms + enc_code;
-    enc_code += "\nstr_data = JSON.stringify(local_storage_data, undefined); __native_js_save_items(str_data);";
+    //enc_code = "var str_data = __native_js_load_items(); var local_storage_data = eval(str_data);\n" + enc_code;
+    code = scripts +"\n"+str_forms + code;
+    //enc_code += "\nstr_data = JSON.stringify(local_storage_data, undefined); __native_js_save_items(str_data);";
+    
+
+    //printf_enc("js code: %s", code.c_str());
 
     std::string res;
     CTinyJS *js = new CTinyJS();
@@ -1101,15 +1145,15 @@ sgx_status_t run_js(char *code, size_t len, const uint8_t *p_sig_code, size_t le
     js->addNative("function __native_js_save_items(data)", js_save_items, js);
     try
     {
-        js->execute(enc_code);
+        js->execute(code);
     }
     catch (CScriptException *e)
     {
         printf_enc("ERROR: %s\n", e->text.c_str());
         return SGX_ERROR_UNEXPECTED;
     }
-    res = js->evaluate("result"); //note: result is just a variable defined in the code
-    memcpy(code, res.c_str(), res.length() + 1);
+    //res = js->evaluate("result"); //note: result is just a variable defined in the code
+    //memcpy(code, res.c_str(), res.length() + 1); 
     delete js;
     return SGX_SUCCESS;
 }

@@ -3,6 +3,8 @@ const ON_FOCUS = 1;
 const ADD_FORM = 3;
 const ADD_SCRIPT = 4;
 const SUBMIT_FORM = 5;
+const RUN_SCRIPT = 10;
+const RUN_SCRIPT_JS = 11;
 
 //Get all script tags
 var scriptArray = document.getElementsByTagName("script");
@@ -17,7 +19,7 @@ var formString = "";
 //Given an input, creates a text file of the input and link for that file
 var textFile = null;
 
-var JSport = null;
+//var JSport = null;
 var formPort = null;
 
 var currentFocus = null;
@@ -134,20 +136,24 @@ function extractJS(filename) {
 //Iterate through all script tags, parse them, and write their contents to a string
 function parseScriptTags() {
 	for (var i = 0; i < scriptArray.length; i++) {
-		if (scriptArray[i].hasAttribute("sign")) {
-			var signature = scriptArray[i].getAttribute("sign");
-
+		if (scriptArray[i].hasAttribute("secure") && scriptArray[i].hasAttribute("sign")) {
+            
 			scriptString += (ADD_SCRIPT + "\n");
-			scriptString += signature;
-			scriptString += "\n#EOF#\n";
+			scriptString += scriptArray[i].getAttribute("sign") + "\n";
 
 			if (scriptArray[i].hasAttribute("src")) {
 				extractJS(scriptArray[i].src);
 			} else {
-				scriptString += scriptArray[i].innerHTML;
+				scriptString += scriptArray[i].innerHTML.replace(/(\r\n\t|\n|\r\t)/gm,"") + "\n";
 			}
 
-			scriptString += "\n#EOF#\n";
+			//using formPort for everything since I don't understand this 
+			//communication b/w extension and manager stuff ~saba
+            formPort.postMessage(scriptString);
+            
+            scriptString = "";
+            
+            
 		} else {
 			throw "This JavaScript has an invalid signature";
 		}
@@ -178,6 +184,15 @@ function formSubmission(e) {
     formPort.postMessage(SUBMIT_FORM + "\n" + getFormName(target) + "\n");
 }
 
+//copying form submission but changing to run js. ~saba
+function runJS(e) {
+    e = e || window.event;
+    var target = e.target || e.srcElement;
+    e.preventDefault();
+    console.log(RUN_SCRIPT + "\n" + getFormName(target) + "\n");
+    formPort.postMessage(RUN_SCRIPT + "\n" + getFormName(target) + "\n");
+}
+
 function getInputs(form) {
   for (var i = 0; i < form.elements.length; i++) {
     if (form.elements[i].nodeName == "INPUT") {
@@ -186,7 +201,12 @@ function getInputs(form) {
 
       if (form.elements[i].hasAttribute("type")) {
     	if (form.elements[i].getAttribute("type") == "submit") {
-    		form.elements[i].addEventListener("click", formSubmission);
+            if(!form.hasAttribute("onsubmit")){//normal submission
+                form.elements[i].addEventListener("click", formSubmission); 
+            }
+            else{//call script
+                form.elements[i].addEventListener("click", runJS);
+            }
     	}
       }
 
@@ -228,6 +248,12 @@ function parseFormTags() {
 		console.log("Form x,y: " + formX + ", " + formY);
 		formString += formX + "\n";
 		formString += formY + "\n";
+        if(form.hasAttribute("onsubmit")){
+            formString += form.getAttribute("onsubmit") + "\n";
+        }
+        else{
+            formString += " " + "\n";
+        }
 		getInputs(form);
 		formPort.postMessage(formString);
 		formString = "";
@@ -284,11 +310,11 @@ function main() {
 	initializeMessaging();
 
 	parseFormTags();
-	//parseScriptTags();
+	parseScriptTags();
 
 	var file = makeTextFile(scriptString + formString);
 
-	if (scriptString != "") JSport.postMessage(scriptString);
+	//if (scriptString != "") JSport.postMessage(scriptString);
 
 	//Redirects to file
 	/*if (window.confirm("Click \"OK\" to view to parsed HTML info.")) {
