@@ -26,7 +26,7 @@
 #define BMP_TAG_LEN 16
 #define BMP_IV_LEN 12
 
-#define BUFFER_LEN 20
+#define BUFFER_LEN 200
 
 static bool isLittleEndian();
 static uint16_t htons(uint16_t in);
@@ -70,7 +70,7 @@ void printFormDisplay(form f){
 void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form_id)
 {
   //ocall_print_string("DISPLAY: BEGIN");
-
+  printf_time("create new overlay: %s", forms[TEST_FORM].inputs[TEST_INPUT].value.c_str());
   uint8_t *p_aad = output;
   uint16_t seq = htons(seq_no);
 
@@ -94,7 +94,7 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
   //adds decrypted buffer to overlay msg for testing purposes
   const char *formIn = forms[TEST_FORM].inputs[TEST_INPUT].value.c_str();
   char testInp[BUFFER_LEN];
-  for (int i = 0; i < BUFFER_LEN; i++) testInp[i] = 'z';
+  for (int i = 0; i < BUFFER_LEN; i++) testInp[i] = '>';
   for (int i = 0; i < std::min((int)strlen(formIn), BUFFER_LEN); i++) testInp[i] = formIn[i];
   
   if (strlen(testInp) < 0) {
@@ -166,6 +166,7 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
   sgx_aes_gcm_128bit_tag_t tag;
   /* TODO: What if encryption fails? */
   //denc_times << "bitmap_encryption," << timeNow() << "," << std::endl;
+  printf_time("enc new overlay: %s", forms[TEST_FORM].inputs[TEST_INPUT].value.c_str());
   if (sgx_rijndael128GCM_encrypt(&p_key, p_enc, (uint32_t) (output - p_enc), p_enc, p_iv,
                              BMP_IV_LEN, NULL, 0, &tag) != SGX_SUCCESS) printf_enc("DISPLAY: ENCRYPT FAILED");
 
@@ -173,7 +174,7 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
   memcpy(output,(uint8_t *) &tag, BMP_TAG_LEN);
   output += BMP_TAG_LEN;
   memcpy(output, p_iv, BMP_IV_LEN);
-  printf_time("created new overlay from buf: %s", forms[TEST_FORM].inputs[TEST_INPUT].value.c_str());
+  
   //printf_enc("DISPLAY: OVERLAY PACKET CREATED, RETURNING NORMALLY");
 }
 

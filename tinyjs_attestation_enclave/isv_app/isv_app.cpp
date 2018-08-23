@@ -95,6 +95,7 @@ typedef std::chrono::high_resolution_clock::time_point TimeVar;
 #define absTime() std::chrono::duration_cast<std::chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count()
 #define ENCLAVE_PATH "isv_enclave.signed.so"
 #define ADD_OVERLAY_HDR_LEN 16
+#define BUFFER_LEN 200
 
 sgx_enclave_id_t enclave_id;
 
@@ -109,7 +110,9 @@ uint8_t *attestation_msg_samples[] =
 
 using namespace std;
 
-KeyboardDriver KB("/dev/ttyACM0", "/dev/ttyACM1");
+bool NODEVICES_MODE = 0;
+
+KeyboardDriver KB(NODEVICES_MODE ? "keyboard_test" : "/dev/ttyACM0",NODEVICES_MODE ? "empty" : "/dev/ttyACM1");
 ofstream myfile;
 ofstream em_timestamps("em_timestamps.csv");
 mutex myfileLock;
@@ -304,7 +307,7 @@ void PRINT_ATTESTATION_SERVICE_RESPONSE(
 // enclave manager required functions
 
 bool DEBUG_MODE = 1;
-bool NODEVICES_MODE = 0;
+
 
 #define ON_BLUR 0
 #define ON_FOCUS 1
@@ -625,7 +628,10 @@ bool parseMessage(string message)
 }
 
 string getPacketStr(uint8_t *outBuff) {
-    return (char*)outBuff + ADD_OVERLAY_HDR_LEN;
+    char str[BUFFER_LEN+1];
+    str[BUFFER_LEN] = '\0';
+    memcpy(str, (char*)outBuff + ADD_OVERLAY_HDR_LEN, BUFFER_LEN);
+    return str;
 }
 
 void sendToDisplay()
@@ -658,7 +664,7 @@ void sendToDisplay()
       overlay_mutex.unlock();
     	//TimeVar btsendStart = timeNow();
 
-    	//em_times << "bluetooth send pk: " << getPacketStr(outBuff) << "," << absTime() << endl;
+    	em_times << "bm send: " << getPacketStr(outBuff) << "," << absTime() << endl;
       //threadSafePrint("sending pack: " + getPacketStr(outBuff));
       if (connection.channel_send((char *)outBuff, (int)out_len) < 0) {
         //threadSafePrint("BT FAILED TO SEND PACKET\n");
@@ -667,7 +673,7 @@ void sendToDisplay()
         //threadSafePrint("BT SENT PACKET time elapsed: " + to_string(dur.count()) + " num packets sent: " + to_string(numPacketsSent));
         numPacketsSent++;
       }
-      em_times << "bluetooth sent," << absTime() << endl;
+      //em_times << "bluetooth sent," << absTime() << endl;
       usleep(170000);
     }
     
@@ -691,40 +697,26 @@ void listenForKeyboard()
 
         uint8_t outBuff[524288];
         uint32_t out_len;
-        //TimeVar createTime = timeNow();
-        em_times << "create_add_overlay_msg ECALL," << absTime() << endl;
         create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
-        em_times << "create_add_overlay_msg ERET," << absTime() << endl;
-        //auto dur = chrono::duration_cast<chrono::microseconds>(timeNow() - createTime);
-        //threadSafePrint("ECALL(DS) got new overlay from enclave for form: " + focusInput.first + ", time: " + to_string(dur.count()));
-
+        em_times << "wait for refresh: " << getPacketStr(outBuff) << "," << absTime() << endl;
         curInputMutex.unlock();
-
         overlay_mutex.lock();
         memcpy(sharedOverlayPacket, outBuff, out_len);
         sharedOutLen = out_len;
         overlayPacketInitialized = true;
         overlaycv.notify_all();
         overlay_mutex.unlock();
-
         uint8_t keyboardBuff[58] = {0};
-        em_times << "getEncryptedKeyboardInput call," << absTime() << endl;
         int enc_bytes = KB.getEncryptedKeyboardInput(keyboardBuff, 58, false);
-        em_times << "getEncryptedKeyboardInput ret," << absTime() << endl;
-        
+        em_times << "got new char," << absTime() << endl;
         uint8_t bytebuff[29];
         hexStrtoBytes((char *)keyboardBuff, 58, bytebuff);
         sgx_status_t ret;
 
-        //em_times << "get_keyboard_chars ECALL," << absTime() << endl;
-        printToTimes("sent encrypted char to enc");
+        
         get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
         if (ret != SGX_SUCCESS) 
-          //threadSafePrint("ERROR DECRYPTING CHAR");
-
-
-        em_times << "get_keyboard_chars ERET," << absTime() << endl;
-        //threadSafePrint("ECALL(KB) sent newchar to enclave");
+          threadSafePrint("ERROR DECRYPTING CHAR");
     }
     //uint32_t out_len;
     //uint8_t outBuff[524288];

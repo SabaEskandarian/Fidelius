@@ -1116,6 +1116,7 @@ sgx_status_t run_js(char *code, size_t len, const uint8_t *p_sig_code, size_t le
 
 //START OF KEYBOARD STUFF
 sgx_status_t get_keyboard_chars(uint8_t *p_src){
+    //printf_time("recieved char");
     sgx_thread_mutex_lock(curInputMutex);
     
     if(ENCLAVE_STATE == FOCUS_OFF) {

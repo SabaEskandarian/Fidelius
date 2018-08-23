@@ -12,12 +12,15 @@
 #include <bluetooth/rfcomm.h>
 #include <bluetooth/l2cap.h>
 #include "btchannel.h"
+#include <chrono>
+
 
 /* Setting this to 1 will cause channel_open to scan discoverable bluetooth
  * devices for one with a name "raspberrypi". Setting this to 0 uses the
  * hardcoded bluetooth address defined as PI_ADDR */
 #define BT_SCAN 0
 #define PI_ADDR "00:1A:7D:DA:71:13" //B8:27:EB:1C:41:F8"
+#define absTime() std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()
 
 /* Bluetooth code modified from
  * https://people.csail.mit.edu/albert/bluez-intro/ */
@@ -46,7 +49,7 @@ BluetoothChannel::BluetoothChannel() {
 
 int BluetoothChannel::channel_open()
 {  
-  log << "trying to open channel" << std::endl;
+  log << "trying to open channel " << absTime() << std::endl;
   inquiry_info *ii = NULL;
   int max_rsp, num_rsp, dev_id, len, flags, i;
   char rsp_addr[19] = { 0 };
@@ -129,13 +132,13 @@ int BluetoothChannel::channel_open()
   // addr.rc_channel = (uint8_t) 1;
   // str2ba(PI_ADDR, &addr.rc_bdaddr );
  //printf("Opening RFCOMM socket \n");
-  log << "opening socket" << std::endl;
+  log << "opening socket" << absTime() << std::endl;
   if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)))
   {
    log << "failed to open socket" << std::endl;
     return -1;
   }
-  log << "socket opened, returning normally" << std::endl;
+  log << "socket opened, returning normally" << absTime() << std::endl;
   return 0;
 #endif
 }

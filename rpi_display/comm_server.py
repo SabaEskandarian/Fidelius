@@ -25,7 +25,7 @@ REMOVE_OVERLAY_HDR_LEN = 12
 TOKEN_LEN = 8
 TAG_LEN = 16
 IV_LEN = 12
-BUFFER_LEN = 20
+BUFFER_LEN = 200
 
 # Op codes (byte 3)
 OP_ADD_OVERLAY = 1
@@ -169,15 +169,17 @@ def parse_message(msg, overlays):
                 data.append(white)
                 data.append(white)
                 data.append(white)
+                data.append(black)
             else:
                 data.append(black)
                 data.append(black)
                 data.append(black)
+                data.append(white)
         #data = [[chr(255),chr(255),chr(255)] if bit == "1" else [chr(0),chr(0),chr(0)] for bit in ba.to01()]
         #logging.debug("flatening rgb data")
         #data = [c for d in data for c in d]
         #logging.debug("making image from bytes")
-        img = Image.frombytes('RGB', (width, height), "".join(data))
+        img = Image.frombytes('RGBA', (width, height), "".join(data))
 
         form = Form(o_id, x, y, img)
         form.inputBuff = "".join(inputVal)
@@ -198,13 +200,15 @@ def parse_message(msg, overlays):
                     data.append(white)
                     data.append(white)
                     data.append(white)
+                    data.append(black)
                 else:
                     data.append(black)
                     data.append(black)
                     data.append(black)
+                    data.append(white)
             #data = [c for d in data for c in d]
             #logging.debug("w {} h {} d {}".format(width, height, len(data)))
-            img = Image.frombytes('RGB', (width, height), "".join(data))
+            img = Image.frombytes('RGBA', (width, height), "".join(data))
 
             form.fields.append(Field(x, y, img))
             # Increase our iterator by the number of bytes used for this field
@@ -264,7 +268,7 @@ if __name__ == "__main__":
                 continue
             # Decrypt and check the tag
             inputVal = unpack('c'*BUFFER_LEN, msg[ADD_OVERLAY_HDR_LEN:ADD_OVERLAY_HDR_LEN+BUFFER_LEN])
-            display_times.write('bitmap received {},%.9f\n'.format("".join(inputVal)) % (time.time()*1000))
+            display_times.write('bitmap received {},%d\n'.format("".join(inputVal)) % (int(time.time()*1000)))
             logging.debug("received bitmap with: {}".format("".join(inputVal)))
             msg = decrypt_message (msg)
             if not msg:
@@ -274,6 +278,8 @@ if __name__ == "__main__":
             # Parse the message
             parse_message(msg, overlays)
             #logging.debug("pickling overlay")
+            display_times.write('bm pickle: {},%d\n'.format("".join(inputVal)) % (int(time.time()*1000)))
+            display_times.flush()
             data = pickle.dumps(overlays, -1)
             sock.send(data)
             #logging.debug('Sending overlays {}'.format(len(data)))
