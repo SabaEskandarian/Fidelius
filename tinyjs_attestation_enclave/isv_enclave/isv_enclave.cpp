@@ -754,18 +754,16 @@ sgx_status_t add_input(const char *form_name, size_t len_form, const char *input
             {
                 std::string form = parse_form(f, false);
                 printf_enc("VALIDATING: %s", form.c_str());
-                if (SGX_SUCCESS == validate((uint8_t *)form.c_str(), (uint32_t)form.length(), (sgx_ec256_signature_t *)p_sig_form))
-                {
-                    f.validated = true;
-                }
-                else
+                if (SGX_SUCCESS != validate((uint8_t *)form.c_str(), (uint32_t)form.length(), (sgx_ec256_signature_t *)p_sig_form))
                 {
                     // delete form, return failure
                     printf_enc("FORM SIGNATURE DOES NOT MATCH");
-                    f.validated = true;
+                    f.validated = false;
                     //forms.erase((std::string) formName);
                     //return SGX_ERROR_INVALID_PARAMETER;
                 }
+                //this next line won't be called if the preceding return is uncommented
+                f.validated = true;
             }
             it->second = f;
             return SGX_SUCCESS;
@@ -1068,6 +1066,16 @@ void js_dump(CScriptVar *v, void *userdata)
     js->root->trace(">  ");
 }
 
+
+//temp for safeware application
+//just because I don't have the i/o system
+//~saba
+void debug_print_form_contents(){
+    printf_enc("input: %s\n", forms["safewareForm"].inputs["input"].value.c_str());
+    printf_enc("matchString: %s\n", forms["safewareForm"].inputs["matchString"].value.c_str());
+    printf_enc("output: %s\n", forms["safewareForm"].inputs["output"].value.c_str());
+}
+
 /*
     Runs a string of JS in the tinyJS enviornment. See documentation on tinyJS at
     https://github.com/gfwilliams/tiny-js/tree/56a0c6d92b5ced9d8b2ade32eec5ddfdfdb49ef5
@@ -1080,7 +1088,7 @@ sgx_status_t run_js(const char *formName, size_t len)
     int codeLen = code.length()+1;
     
     printf_enc("running js! %s length=%d", code, codeLen);
-    return SGX_SUCCESS;
+    //return SGX_SUCCESS;
     //TODO:Saba: add in the scripts and one line to call the desired function for the form
     //also see what's already happening here 
     
@@ -1113,7 +1121,7 @@ sgx_status_t run_js(const char *formName, size_t len)
      */
     //also add loading/saving code
     //enc_code = "var str_data = __native_js_load_items(); var local_storage_data = eval(str_data);\n" + enc_code;
-    enc_code = str_forms + enc_code;
+    enc_code = scripts +"\n"+str_forms + enc_code;
     //enc_code += "\nstr_data = JSON.stringify(local_storage_data, undefined); __native_js_save_items(str_data);";
 
     std::string res;
@@ -1138,6 +1146,7 @@ sgx_status_t run_js(const char *formName, size_t len)
     //res = js->evaluate("result"); //note: result is just a variable defined in the code
     //memcpy(code, res.c_str(), res.length() + 1); 
     delete js;
+    debug_print_form_contents();
     return SGX_SUCCESS;
 }
 
