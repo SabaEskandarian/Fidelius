@@ -530,6 +530,7 @@ form curForm = nullForm;
 input curInput = nullInput;
 
 std::string origin = "";
+int revNum = 0;
 
 /*
     Given a form, prints the number of elements in it
@@ -675,6 +676,7 @@ sgx_status_t add_form(const char *name, size_t len,
     else
     {
         origin = oName;
+        revNum = 0;//We don't have a server atm so this starts at 0
     }
 
     std::string eName = copyString(name, len);
@@ -1002,26 +1004,37 @@ void js_get_http_response(CScriptVar *v, void *userdata)
 */
 void js_load_items(CScriptVar *v, void *userdata)
 {
-    std::string sealed;
     size_t data_len;
-    ocall_get_file_size(&data_len, (origin + ".txt").c_str());
+    ocall_get_file_size(&data_len);
     if (data_len > 0)
     {
-        ocall_read_file((origin + ".txt").c_str(), &sealed[0], data_len);
+        sgx_sealed_data_t* sealed = (sgx_sealed_data_t*)malloc(data_len);
+        ocall_read_file((uint8_t*)sealed, data_len);
+        //printf_enc("loading data quantity: %d\n", data_len);
+        //printf_enc("reading data first bytes %x%x%x", sealed[0], sealed[1], sealed[2]);
 
-        uint32_t len = sgx_get_encrypt_txt_len((const sgx_sealed_data_t *)&sealed);
+        //uint32_t len = 610;
+        uint32_t len = sgx_get_encrypt_txt_len(sealed);
         char decrypted_text[len];
-        uint32_t mac_len = 0;
+
+        uint32_t mac_len = 4+origin.length();
+        //printf_enc("len: %d", len);
+        
+        uint8_t* ad = (uint8_t*)malloc(mac_len);
+        int oldRevNum = revNum-1;
+        memcpy(ad, &oldRevNum, 4);
+        memcpy(&ad[4], origin.c_str(), origin.length());
+
         sgx_status_t ret = sgx_unseal_data(
-            (const sgx_sealed_data_t *)&sealed,
-            NULL,
+            sealed,
+            ad,
             &mac_len,
             (uint8_t *)&decrypted_text[0],
             &len);
 
         if (ret != SGX_SUCCESS)
         {
-            printf_enc("Error: data unsealing failed\n");
+            printf_enc("Error: data unsealing failed %d\n", ret);
         }
         std::string decrypted = std::string(decrypted_text);
         v->getReturnVar()->setString(decrypted);
@@ -1030,6 +1043,8 @@ void js_load_items(CScriptVar *v, void *userdata)
     {
         v->getReturnVar()->setString("{}");
     }
+    
+    printf_enc("loading data: %s\n", v->getReturnVar()->getString().c_str());
     return;
 }
 
@@ -1040,24 +1055,37 @@ void js_load_items(CScriptVar *v, void *userdata)
     NOTE: Currently this is buggy.
 */
 void js_save_items(CScriptVar *v, void *userdata)
-{
-    std::string data_to_store = v->getParameter("data")->getString();
-    uint32_t len = (uint32_t)data_to_store.length();
-    uint32_t sealed_size = sgx_calc_sealed_data_size(0, len);
-    sgx_sealed_data_t sealed_data[sealed_size];
+{    
+    std::string data_to_s = v->getParameter("data")->getString();
+    uint32_t len = data_to_s.length();
+    uint8_t* data_to_store = (uint8_t*)malloc(len+1);
+    memcpy(data_to_store, data_to_s.c_str(), len+1);
+    printf_enc("sealing data: %s\n", data_to_store);
+    uint32_t sealed_size = sgx_calc_sealed_data_size(4+origin.length(), len+1);
+    sgx_sealed_data_t* sealed_data = (sgx_sealed_data_t*) malloc(sealed_size);
+    
+    uint8_t* ad = (uint8_t*)malloc(4+origin.length());
+    memcpy(ad, &revNum, 4);
+    memcpy(&ad[4], origin.c_str(), origin.length());
+    
     sgx_status_t ret = sgx_seal_data(
-        0,
-        NULL,
-        len,
-        (uint8_t *)&data_to_store[0],
+        4+origin.length(),
+        ad,
+        len+1,
+        data_to_store,
         sealed_size,
-        &sealed_data[0]);
+        sealed_data);
 
     if (ret != SGX_SUCCESS)
     {
-        printf_enc("Error: data sealing failed\n");
+        printf_enc("Error: data sealing failed %d\n", ret);
     }
-    ocall_write_file((origin + ".txt").c_str(), (char *)&sealed_data[0], sealed_size);
+    //printf_enc("writing data first bytes %x%x%x", sealed_data[0], sealed_data[1], sealed_data[2]);
+
+    ocall_write_file((uint8_t*)sealed_data, sealed_size);
+    free(sealed_data);
+    free(data_to_store);
+    revNum++;
     return;
 }
 
@@ -1126,10 +1154,9 @@ sgx_status_t run_js(const char *formName, size_t len)
      *
      */
     //also add loading/saving code
-    //enc_code = "var str_data = __native_js_load_items(); var local_storage_data = eval(str_data);\n" + enc_code;
-    code = scripts +"\n"+str_forms + code;
-    //enc_code += "\nstr_data = JSON.stringify(local_storage_data, undefined); __native_js_save_items(str_data);";
-    
+    std::string start_code = "var str_data = __native_js_load_items(); var localStorage = eval(str_data);\n";
+    std::string end_code = "\nstr_data = JSON.stringify(localStorage, undefined); __native_js_save_items(str_data);";
+    code = start_code+"\n"+scripts +"\n"+str_forms +"\n"+ code+"\n"+end_code;
 
     //printf_enc("js code: %s", code.c_str());
 
