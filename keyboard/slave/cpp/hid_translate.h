@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <chrono>
 
 #define BUF_LEN 512
 
@@ -140,8 +141,8 @@ void print_options()
 int send_key(int fd, const char * filename, char ch)
 {
   char buf[BUF_LEN];
-  char report[8];
-  int to_send = 8;
+  char report[16];
+  int to_send = 16;
   int hold = 0;
   
   //print_options();
@@ -153,23 +154,25 @@ int send_key(int fd, const char * filename, char ch)
   memset(report, 0x0, sizeof(report));
   
   to_send = keyboard_fill_report(report, buf, &hold);
-  
+  for (int i = 8; i < 16; i++) report[i] = char(0);
   if (to_send == -1)
     return -1;
   
-  if (write(fd, report, to_send) != to_send) {
+  if (write(fd, report, 16) != to_send) {
     perror(filename);
     return 5;
   }
-  
+  //calling 2 consecutive writes on the same fd causes an error, sleep to avoid this
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
   if (!hold) {
     memset(report, 0x0, sizeof(report));
-    if (write(fd, report, to_send) != to_send) {
+    //for (int i =0; i < 8; i++) report[i]=0;
+    int x = write(fd, report, 8);
+    if (x != to_send) {
       perror(filename);
       return 6;
     }
   }
-  
   return 0;
 }
 

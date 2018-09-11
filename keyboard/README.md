@@ -1,6 +1,6 @@
 # Organization
 
-Everything related to the PI Zero is in the `slave/` directory. Files relevant to the linux host and enclave are in the `host/` directory.
+Everything related to the Pi is in the "slave/" directory. Files relevant to the linux host and enclave are in the "host/" directory.
 
 There are READMEs in each of these directories that explain usage and installation. 
 

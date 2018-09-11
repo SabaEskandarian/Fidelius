@@ -17,11 +17,14 @@
 // Set z as the filler character that is filtered to prevent
 // timing attacks 
 #define FILLER 'z'
+#define timeNow() std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()
 
 std::queue<int> secure_inputs;
 std::mutex secure_inputs_mutex;
 std::mutex mode_mutex;
-bool KEYBOARD_SECURE_MODE = TRUE;
+bool KEYBOARD_SECURE_MODE = 0;
+
+std::ofstream keyb_times;
 
 // Resets terminal to original settings
 void endCurses()
@@ -52,10 +55,13 @@ void echoToWindow(int ch)
 // 
 //
 //
+
+
+
 void secureSend(int secure_fd) {
   int iv_count = 0;
   while (TRUE) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
     std::lock_guard<std::mutex> guard(secure_inputs_mutex);
 
     int ch = FILLER;
@@ -63,14 +69,24 @@ void secureSend(int secure_fd) {
       ch = secure_inputs.front();
       //echoToWindow(ch);
       secure_inputs.pop();
+      if (ch == 0) exit(0);
     } else {
 
       // Dummy input
-      //echoToWindow('E');
+      // echoToWindow('E');
+    }
+    if (ch != FILLER) {
+	std::string msg = "key encryption: ";
+	msg += ch;
+        keyb_times << msg << "," << timeNow() << std::endl;
     }
     std::string cyphertext = next_encrypt(ch,iv_count);
     iv_count++;
-
+    if (ch != FILLER) {
+	std::string msg = "USB sent key: ";
+	msg += ch;
+        keyb_times << msg << "," << timeNow() << std::endl;
+    }
     write(secure_fd, cyphertext.c_str(), 58);
     //std::cout << cyphertext << std::endl;
     
@@ -84,11 +100,36 @@ void secureSend(int secure_fd) {
 void changeModeReceive(int changeMode_fd) {
 
   while (TRUE) {    
-    
-    
-    std::lock_guard<std::mutex> guard(mode_mutex);
-    
+    //std::lock_guard<std::mutex> guard(mode_mutex);
+    fd_set rfds;
+    FD_ZERO(&rfds);
+    FD_SET(changeMode_fd , &rfds);
+    select(changeMode_fd+1, &rfds, NULL, NULL, NULL);
+    int bytes_read = 0;
+    unsigned char mode;
+    if (FD_ISSET(changeMode_fd, &rfds)) {
 
+      bytes_read = read(changeMode_fd, &mode, 1);
+      if(bytes_read != 1) {
+        std::cout << "bad read call" << std::endl;
+      } else {
+	//unsigned char old_mode = mode;
+        mode_mutex.lock();
+	if (mode) {
+	  system("./turn_on_led.py");
+	  std::cout << "secure mode" << std::endl;
+	}
+	if (!mode) {
+	  system("./turn_off_led.py");
+	  std::cout << "insecure mode" << std::endl;
+	}
+	unsigned char old_mode = KEYBOARD_SECURE_MODE;
+	KEYBOARD_SECURE_MODE = mode;
+	mode_mutex.unlock();
+	if (KEYBOARD_SECURE_MODE && !old_mode) sleep(3); //enforces a sleep if we are turning the secure mode off
+      }
+    }
+   // sleep(3);
   }
 }
 
@@ -100,16 +141,18 @@ void changeModeReceive(int changeMode_fd) {
 void processInput(int fd, const char* filename, int ch)
 {
   echoToWindow(ch);
+  mode_mutex.lock();
   if (!KEYBOARD_SECURE_MODE) {
     if (ch == k_DELETE) {
       //echoToWindow('d');
     } else {
-      send_key(fd, filename, ch);
+      std::cout << send_key(fd, filename, ch) << std::endl;
     }
   } else {
     std::lock_guard<std::mutex> guard(secure_inputs_mutex);
     secure_inputs.push(ch);
   }
+  mode_mutex.unlock();
 }
 
 void setAttributes(int handle){
@@ -179,26 +222,27 @@ int openPort(const char * filename) {
   return fd;
 }
 
-int main(int argc, char * argv[]) {
-  
+int main(int argc, char * argv[]) {  
+  keyb_times.open("keyb_times.csv");
   const char * HIDName = "/dev/hidg0";
   const char * secureName = "/dev/ttyGS0";
   const char * changeModeName = "/dev/ttyGS1";
+  system("./turn_off_led.py");
 
 //   if (argc < 3) {
 //     fprintf(stderr, "Usage: %s keyboardname secDevname\n", argv[0]);
 //     return 1;
 //   }
   
-  if (argc > 1) {
-    HIDName = argv[1];
-  }
-  if (argc > 2) {
-    secureName = argv[2];
-  }
-  if (argc > 3) {
-    changeModeName = argv[3];
-  }
+//  if (argc > 1) {
+//          
+//  }
+//  if (argc > 2) {
+//    secureName = argv[2];
+//  }
+//  if (argc > 3) {
+//    changeModeName = argv[3];
+//  }
 
   // Required init and exit register
   startCurses();
@@ -210,14 +254,29 @@ int main(int argc, char * argv[]) {
   setAttributes(changeMode_fd);
 
   std::thread secure_send_thread(secureSend, secure_fd);  
-  // std::thread change_mode_thread(changeModeReceive, changeMode_fd);
+  std::thread change_mode_thread(changeModeReceive, changeMode_fd);
 
-  int ch;  
-  while(TRUE) {
-    ch = getch();
-    processInput(hid_fd, HIDName, ch);
-  } 
-  
+  int ch;
+  if (argc > 1) {
+     //if (strcmp(argv[1], "test1") == 0) {
+	sleep(2);
+        for (int i = 0; i < 200; i++) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(20));
+          keyb_times << "keypress: a," << timeNow() << std::endl;
+          processInput(hid_fd, HIDName, 'a');
+	  std::cout << "a" << std::endl;
+        }
+	std::cout << "done" << std::endl;
+     //}
+  } else {
+    while(TRUE) {
+      ch = getch();
+      std::string msg = "keypress: ";
+      msg += ch;
+      keyb_times << msg << "," << timeNow() << std::endl;
+      processInput(hid_fd, HIDName, ch);
+    }
+  }
   secure_send_thread.join();
   change_mode_thread.join();
 
