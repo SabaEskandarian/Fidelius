@@ -45,6 +45,7 @@
 #include <bitset>
 #include "sgx_thread.h"
 
+
 #include <map>
 #include <stdlib.h>
 
@@ -87,6 +88,7 @@ static const sgx_ec256_public_t g_sp_pub_key = {
  * origin. The enclave will implement the validation of certificate using
  * a root certificate store in an "system" enclave.
  */
+/*
 static const sgx_ec256_public_t test_p_key = {
     {0xae, 0xc5, 0x8b, 0x2e, 0x23, 0x5b, 0xb7, 0xe7,
      0x9f, 0x1a, 0xd0, 0x5e, 0x4b, 0x7c, 0x5e, 0xf0,
@@ -106,6 +108,7 @@ static const sgx_ec256_public_t test_p_key = {
  * 
  * XXX: This key MUST be removed from here.
  */
+/*
 static sgx_ec256_private_t test_priv = {
     {0x7d, 0xf4, 0xb0, 0xd1, 0x36, 0xbf, 0xb5, 0x97,
      0xe1, 0x79, 0xb2, 0xee, 0xc8, 0x7a, 0x7b, 0xe2,
@@ -118,29 +121,23 @@ static sgx_ec256_private_t test_priv = {
 
 //New--this should be used to validate forms/js--at some point,
 //we can replace g_sp_pub_key with this
-/*static const sgx_ec256_public_t test_p_key = {
-    {
-		0x79, 0x9d, 0x98, 0x91, 0x45, 0x69, 0xa6, 0xb0, 
-		0x90, 0x56, 0xfc, 0xfe, 0x3f, 0xe0, 0xb5, 0xa4, 
-		0x9, 0x5d, 0x91, 0x85, 0x4b, 0x90, 0x0, 0x1c, 
-		0xf3, 0x67, 0xcd, 0x82, 0x8f, 0xe1, 0x32, 0x50	
-    },
-    {
-		0xb0, 0x76, 0x3f, 0x55, 0xb, 0x9e, 0x62, 0x3c, 
-		0x2d, 0x29, 0xd0, 0x87, 0xc, 0x6d, 0x2c, 0xa4, 
-		0xf8, 0xa9, 0x24, 0xc, 0x75, 0xab, 0x70, 0xd, 
-		0x1f, 0x21, 0x7f, 0xc3, 0xe8, 0x80, 0xdc, 0x94
-    }
-};*/
+static const sgx_ec256_public_t test_p_key = {
+    {0xb9, 0x06, 0xb2, 0xe1, 0x03, 0xcc, 0x7b, 0x5d,
+    0x00, 0xa4, 0xa9, 0x3b, 0xb7, 0x73, 0xf7, 0x24,
+    0x67, 0x33, 0x51, 0x49, 0x09, 0xcd, 0x5c, 0xe0,
+    0xf2, 0xce, 0x31, 0x76, 0x1a, 0xea, 0xcf, 0x44},
+    {0xc2, 0x8b, 0x3a, 0xf0, 0x3f, 0x61, 0xd9, 0xad,
+    0xb8, 0x60, 0x96, 0x3c, 0xdc, 0x94, 0x5d, 0x82,
+    0x82, 0x3d, 0x0a, 0x01, 0x2f, 0xda, 0x9e, 0xba,
+    0x11, 0xf4, 0xc4, 0x41, 0xd3, 0xe0, 0x2a, 0xf8}
+};
 //New--this should be used to sign foms/js for validation
-/*static sgx_ec256_private_t test_priv = {
-    {
-		0x47, 0x2b, 0xde, 0xa4, 0x66, 0x7f, 0xc0, 0x52,
-		0xe0, 0x4a, 0x6d, 0x77, 0xda, 0xe7, 0x48, 0xba, 
-		0x67, 0x9d, 0x22, 0x45, 0x1c, 0xf5, 0x8, 0xae, 
-		0xb, 0x7f, 0x61, 0x84, 0xa2, 0xa3, 0xe0, 0x9b
-	}
-};*/
+static sgx_ec256_private_t test_priv = {
+    {0x97, 0x56, 0xc6, 0x16, 0xd7, 0xd5, 0xf2, 0xf6, 
+    0xb9, 0x8c, 0xc0, 0x32, 0x3f, 0x17, 0xab, 0x95, 
+    0x53, 0x12, 0x95, 0x13, 0xf4, 0x67, 0x75, 0xa1, 
+    0x43, 0x5a, 0x00, 0x21, 0xf5, 0x52, 0x24, 0xcc}
+};
 
 /* =========================
  * Symmetric Key for NET I/O
@@ -310,6 +307,16 @@ void printf_time(const char *fmt, ...)
     vsnprintf(buf, BUFSIZ, fmt, ap);
     va_end(ap);
     ocall_print_time(buf);
+}
+
+void printf_hex(const char *fmt, ...)
+{
+    char buf[BUFSIZ] = {'\0'};
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, BUFSIZ, fmt, ap);
+    va_end(ap);
+    ocall_print_hex(buf);
 }
 
 std::string intToString(int i)
@@ -592,6 +599,8 @@ std::string copyString(const char *s, size_t len)
     return es;
 }
 
+
+
 /*
     Validates a form or JS program (or any arbitrary data, really). Validation
     involves hashing the message and then verifiying that the signiture is valid.
@@ -605,6 +614,11 @@ std::string copyString(const char *s, size_t len)
 sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
                       sgx_ec256_signature_t *p_signature)
 {
+    char *sig = (char *)p_signature;
+    for (int i = 0; i < sizeof(sgx_ec256_signature_t); i++) {
+        unsigned char x = sig[i];
+        printf_enc("b: %x", x);
+    }
     sgx_ecc_state_handle_t ecc_handle;
     sgx_status_t sample_ret = sgx_ecc256_open_context(&ecc_handle);
     if (SGX_SUCCESS != sample_ret)
@@ -612,15 +626,21 @@ sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
         printf_enc("\nError, cannot get ECC context");
     }
     uint8_t result;
-    sgx_sha256_hash_t hash;
-    sgx_status_t ret = sgx_sha256_msg(p_message, message_size, &hash);
-
+    //sgx_sha256_hash_t hash;
+    sgx_status_t ret;// = sgx_sha256_msg(p_message, message_size, &hash);
+    /*
     if (ret != SGX_SUCCESS)
     {
         return ret;
-    }
+    }*/
 
-    ret = sgx_ecdsa_verify((uint8_t *)&hash, (uint32_t)sizeof(sgx_sha256_hash_t), &test_p_key, p_signature,
+    //printf_enc("hash: %s signature: %s", hash, p_signature);
+
+    ret = sgx_ecdsa_sign(p_message, strlen((const char*)p_message), &test_priv, p_signature, ecc_handle);
+
+    printf_hex("%s",p_signature);
+
+    ret = sgx_ecdsa_verify(p_message, 57, &test_p_key, p_signature,
                            &result, ecc_handle);
     if (ecc_handle)
     {
@@ -628,13 +648,15 @@ sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
     }
     if (ret != SGX_SUCCESS)
     {
+        printf_enc("err, verify failed: %d", ret);
         return ret;
     }
     if ((sgx_generic_ecresult_t)result != SGX_EC_VALID)
     {
+        printf_enc("err, bad sig: %d", result);
         return SGX_ERROR_INVALID_PARAMETER;
     }
-    return ret;
+    return SGX_SUCCESS;
 }
 
 //add a new script
@@ -765,7 +787,7 @@ sgx_status_t add_input(const char *form_name, size_t len_form, const char *input
                     //return SGX_ERROR_INVALID_PARAMETER;
                 }
                 //this next line won't be called if the preceding return is uncommented
-                f.validated = true;
+                //f.validated = true;
             }
             it->second = f;
             return SGX_SUCCESS;
@@ -812,8 +834,6 @@ sgx_status_t onFocus(const char* formName, const char* inputName,
 
 //sets flag indicating no form/input field is ready to accept user input
 sgx_status_t onBlur() {
-  std::string fname = "loginform";
-  std::string iname = "username";
   printf_enc("BEFORE BLUR data for %s: %s: %s",curForm.name.c_str(), curInput.name.c_str(), curForm.inputs[curInput.name].value.c_str());
   sgx_thread_mutex_lock(curInputMutex);
   curForm = nullForm;
@@ -853,7 +873,7 @@ sgx_status_t submit_form(const char *formName, uint8_t *dest, uint32_t encr_size
     if (!f.validated)
     {
         printf_enc("SUBMIT form not validated");
-        return SGX_ERROR_INVALID_PARAMETER;
+        //return SGX_ERROR_INVALID_PARAMETER;
     }
 
     std::string str_form = parse_form(f, true);
@@ -1090,7 +1110,7 @@ sgx_status_t run_js(const char *formName, size_t len)
     std::string code = forms[formName].onsubmit;
     code += ";";
     
-    printf_enc("running js! %s", code);
+    printf_enc("running js! %s", code.c_str());
     //return SGX_SUCCESS;
     //TODO:Saba: add in the scripts and one line to call the desired function for the form
     //also see what's already happening here 
@@ -1175,6 +1195,7 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     uint8_t tag[16];
 
     ciphertext[0] = p_src[0];
+    printf_enc("%c", ciphertext[0]);
 
     for (int i = 1; i < 17; i++)
     {
@@ -1206,6 +1227,7 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     else if (p_char[0] != 0)
     {
         curInput.value += p_char[0];
+
         printf_time("added ch to enc buffer: %s", curInput.value.c_str());
         printf_enc("adding ch tp enc buffer: %c", p_char[0]);
     } else if (p_char[0] == 0) {
@@ -1220,9 +1242,9 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     //printf_enc("KEYBOARD: new value for input = %s", curInput.value.c_str());
 
 
-    std::string fname = "loginform";
-    std::string iname = "username";
-    std::string iname2 = "password";
+    // std::string fname = "loginform";
+    // std::string iname = "username";
+    // std::string iname2 = "password";
     //printf_enc("BEFORE ADDKEY data for loginform: username: %s", forms[fname].inputs[iname].value.c_str());
     //printf_enc("BEFORE ADDKEY data for loginform: password: %s", forms[fname].inputs[iname2].value.c_str());
     forms[curForm.name].inputs[curInput.name] = curInput;
@@ -1247,6 +1269,6 @@ sgx_status_t gcm_decrypt(uint8_t *p_src, uint32_t src_len, uint8_t *p_dst, uint8
         //printf_enc("Decrypted Characters(in Enclave):%x", p_dst[i]);
     }
 
-    //printf_enc("Status_decrypt: %x\n", status);
+    printf_enc("Status_decrypt: %x\n", status);
     return status;
 }

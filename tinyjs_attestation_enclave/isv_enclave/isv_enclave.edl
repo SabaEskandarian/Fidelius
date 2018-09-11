@@ -39,6 +39,7 @@ enclave {
     untrusted {
         void ocall_print_string([in, string] const char *str);
         void ocall_print_time([in, string] const char *str);
+        void ocall_print_hex([in, string] const char *str);
 
         sgx_status_t enc_make_http_request([in, string] const char* method, [in, string] const char* url, [in, string] const char* headers, [in, string] const char* request_data, [out, count=16] uint8_t* p_mac, [out] int* ret_code);
 

@@ -60,8 +60,9 @@ function onFocus() {
 		var focusInfo = {formName, inputName, xCoord, yCoord};
 		//formPort.postMessage("The following element has just been focused on:\n" + JSON.stringify(focusInfo));
 		console.log("The following element has just been focused on:");
-		console.log(focusInfo);
+		
 		var m = "" + ON_FOCUS + '\n' + formName + '\n' + inputName + '\n' + xCoord + '\n' + yCoord + '\n' + height + '\n' + width + '\n';
+		console.log(m);
 		formPort.postMessage(m);
 
 	}
@@ -155,7 +156,7 @@ function parseScriptTags() {
             
             
 		} else {
-			throw "This JavaScript has an invalid signature";
+			//throw "This JavaScript has an invalid signature";
 		}
 	}
 }

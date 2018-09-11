@@ -1,0 +1,79 @@
+<html>
+  <head secure origin="https://stanford.edu/submit">
+
+    <title>Login form</title>
+    
+  </head>
+
+  <body>
+
+    <h1>(Secure) User Login</h1>
+
+    <!--
+      The attribute secure means that the browser delegates to
+      the enclave I/O, rendering, and event handling.
+
+      We won't support all possible tags, but only input text and 
+      submit
+    -->
+    
+    <!-- {"formName": "loginform", "password": "","username": "",}
+signature.js:2879 Public Key: aec58b2e235bb7e79f1ad05e4b7c5ef07c13dbf3eeedbd7f1fdd552c7e794358f60787ef5db447ab544637b05a1919dab698d8ebebc3818f2cd2747d6a3c9df7
+Private Key: 7df4b0d136bfb597e179b2eec87a7be253b1be2ca82f342e7a3fd196a7e58be5
+signature.js:2881 Public Key: 125,244,176,209,54,191,181,151,225,121,178,238,200,122,123,226,83,177,190,44,168,47,52,46,122,63,209,150,167,229,139,229
+signature.js:2884 Signature: 7b4b6ef239c0327d364e483dfbe275af19748380b3957d7519bb3599effaa077486871f1b97de5c24945eb306105048a56319e56ecc18c543f130321b6c8fe0e
+signature.js:2885 Signature: 123,75,110,242,57,192,50,125,54,78,72,61,251,226,117,175,25,116,131,128,179,149,125,117,25,187,53,153,239,250,160,119,72,104,113,241,185,125,229,194,73,69,235,48,97,5,4,138,86,49,158,86,236,193,140,84,63,19,3,33,182,200,254,14 -->
+
+    <form name="loginform" sign="bdc0269d7433bdf7728ed7294f94a279ae928fd4f7513e2b7ac95184a314cbf2b72c8f216e66e0edb832becf8df87c86f4fe7b5c516edb74beaa797c6c032" action="/api/login" secure>
+      <label for="username">Username:</label>
+      <input type="text" name="username" autocomplete="off" required/><br/>
+
+      <label for="password">Password:</label>
+      <input type="text" name="password" required/><br/><br/>
+
+      <input type="submit" value="Login" />
+    </form>
+<form name="loginform1" sign="bdc0269d7433bdf7728ed7294f94a279ae928fd4f7513e2b7ac95184a314cbf2b72c8f216e66e0edb832becf8df87c86f4fe7b5c516edb74beaa797c6c032" action="/api/login" secure>
+      <label for="username1">Username:</label>
+      <input type="text" name="username1" autocomplete="off" required/><br/>
+
+      <label for="password1">Password:</label>
+      <input type="text" name="password1" required/><br/><br/>
+    </form>
+<form name="loginform2" sign="bdc0269d7433bdf7728ed7294f94a279ae928fd4f7513e2b7ac95184a314cbf2b72c8f216e66e0edb832becf8df87c86f4fe7b5c516edb74beaa797c6c032" action="/api/login" secure>
+      <label for="username2">Username:</label>
+      <input type="text" name="username2" autocomplete="off" required/><br/>
+
+      <label for="password2">Password:</label>
+      <input type="text" name="password2" required/><br/><br/>
+    </form>
+<form name="loginform3" sign="bdc0269d7433bdf7728ed7294f94a279ae928fd4f7513e2b7ac95184a314cbf2b72c8f216e66e0edb832becf8df87c86f4fe7b5c516edb74beaa797c6c032" action="/api/login" secure>
+      <label for="username3">Username:</label>
+      <input type="text" name="username3" autocomplete="off" required/><br/>
+
+      <label for="password3">Password:</label>
+      <input type="text" name="password3" required/><br/><br/>
+    </form>
+<form name="loginform4" sign="bdc0269d7433bdf7728ed7294f94a279ae928fd4f7513e2b7ac95184a314cbf2b72c8f216e66e0edb832becf8df87c86f4fe7b5c516edb74beaa797c6c032" action="/api/login" secure>
+      <label for="username4">Username:</label>
+      <input type="text" name="username4" autocomplete="off" required/><br/>
+
+      <label for="password4">Password:</label>
+      <input type="text" name="password4" required/><br/><br/>
+    </form>
+<form name="loginform5" sign="bdc0269d7433bdf7728ed7294f94a279ae928fd4f7513e2b7ac95184a314cbf2b72c8f216e66e0edb832becf8df87c86f4fe7b5c516edb74beaa797c6c032" action="/api/login" secure>
+      <label for="username5">Username:</label>
+      <input type="text" name="username5" autocomplete="off" required/><br/>
+
+      <label for="password5">Password:</label>
+      <input type="text" name="password5" required/><br/><br/>
+    </form>
+
+
+
+
+
+    <p id="demo"></p>
+
+  </body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+
+<head secure origin="file:///home/fidelious/Fidelius/sub.html">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Credit Card Validation Demo</title>
+    <link rel="stylesheet" type="text/css" href="assets/css/styles.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/demo.css">
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="creditCardForm">
+            <div class="heading">
+                <h1>Confirm Purchase</h1>
+            </div>
+            <div class="payment">
+                <form name="loginform" sign="fbb5dff53de007f6630fd215005abfb1c95b1175b13af07e32d980cb3081d319a0c67d4774c6bd473b692cf210666990a74880a54a3d708f3f0b62f555732e66"
+				secure>
+                    <div class="form-group">
+                        <label for="owner">Owner</label>
+                        <input type="text" class="form-control" id="owner" name="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="cvv">CVV</label>
+                        <input type="text" class="form-control" id="cvv" name = "cvv">
+                    </div>
+                    <div class="form-group" id="card-number-field">
+                        <label for="cardNumber">Card Number</label>
+                        <input type="text" class="form-control" id="cardNumber" name = "cardNumber">
+                    </div>
+                    <div class="form-group" id="card-number-field">
+                        <label for="cardNumber">Date</label>
+                        <input type="text" class="form-control" id="date" name = "date">
+                    </div>
+                    <div class="form-group" id="credit_cards">
+                        <img src="assets/images/visa.jpg" id="visa">
+                        <img src="assets/images/mastercard.jpg" id="mastercard">
+                        <img src="assets/images/amex.jpg" id="amex">
+                    </div>
+                    <div class="form-group" id="pay-now">
+                        <input type="submit" class="btn btn-default" id="confirm-purchase"> </input>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <p class="examples-note">Here are some dummy credit card numbers and CVV codes so you can test out the form:</p>
+
+        <div class="examples">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Card Number</th>
+                            <th>Security Code</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Visa</td>
+                            <td>4716108999716531</td>
+                            <td>257</td>
+                        </tr>
+                        <tr>
+                            <td>Master Card</td>
+                            <td>5281037048916168</td>
+                            <td>043</td>
+                        </tr>
+                        <tr>
+                            <td>American Express</td>
+                            <td>342498818630298</td>
+                            <td>3156</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

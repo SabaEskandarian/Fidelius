@@ -96,8 +96,8 @@ int KeyboardDriver::getEncryptedKeyboardInput(uint8_t * p_dst, int len, bool blo
   //   };
 
   struct timeval t;
-  t.tv_sec = 3;
-  t.tv_usec = 0;
+  t.tv_sec = 0;
+  t.tv_usec = 10000;
   
   fd_set rfds;
   FD_ZERO(&rfds);

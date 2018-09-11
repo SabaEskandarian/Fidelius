@@ -27,6 +27,9 @@
 #define BMP_IV_LEN 12
 
 #define BUFFER_LEN 200
+#define ORIGIN_BM_WIDTH 250
+#define INPUT_BM_WIDTH 150
+#define ORIGIN_BM_HEIGHT 20
 
 static bool isLittleEndian();
 static uint16_t htons(uint16_t in);
@@ -43,6 +46,7 @@ static uint16_t seq_no = 0;
 
 extern std::map<std::string, form> forms;
 extern std::string origin;
+extern input curInput;
 
 //#define timeNow() std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count()
 //ofstream denc_times("dis_enc_times.csv");
@@ -105,10 +109,6 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
   output += BUFFER_LEN;
   *out_len += BUFFER_LEN;
 
-  //output[0] = '\0';
-  //output+= 1;
-  //*out_len++;
-
 
   /* Start of encrypted data */
   uint8_t *p_enc = output;
@@ -116,43 +116,34 @@ void create_add_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form
   /* Add bitmap data */
   uint32_t bitmap_len = 0;
 
-  std::map<std::string,form>::iterator form_it;
-  form_it = forms.find((std::string)(form_id));
-
-  if (form_it == forms.end())
-  {
-    //ocall_print_string("DISPLAY: FORM NOT FOUND");
-  }
+  std::map<std::string,form>::iterator form_it = forms.begin();
+  for (form_it; form_it != forms.end(); ++form_it) {
   form form = form_it->second;
   //printFormDisplay(form);
   //printf_enc("NUMBER OF INPUTS: %d", form.inputs.size());
 
   //printf_enc("DISPLAY: FORM ORGIN = %s", origin.c_str());
   /* Add the origin bitmap */
-  bitmap_len = add_bitmap_data(output, form.x, form.y, 200,
-                            30, origin);
+  bitmap_len = add_bitmap_data(output, form.x, form.y, ORIGIN_BM_WIDTH,
+                            ORIGIN_BM_HEIGHT, origin);
   *out_len += bitmap_len;
   output += bitmap_len;
 
-  //ocall_print_string("DISPLAY: ADDING FIELD BITMAPS");
-  /* Add the bitmaps of the input fields */
-  //printf_enc("DISPLAY: Form X = %d", form.x);
-  //printf_enc("DISPLAY: Form Y = %d", form.y);
+  bitmap_len = add_bitmap_data(output, form.x, form.y, INPUT_BM_WIDTH,
+                            ORIGIN_BM_HEIGHT, strcmp(form_id, "None") == 0 ? "None" : curInput.name);
+  *out_len += bitmap_len;
+  output += bitmap_len;
+
   for (std::map<std::string, input>::iterator it = form.inputs.begin();
        it != form.inputs.end(); it++)
   {
     input field = it->second;
-    //printf_enc("DISPLAY: Form: %s Input Field name = %s value = %s", form.name.c_str(), it->first.c_str(), field.value.c_str());
-    //printf_enc("DISPLAY: Input Field Value = %s", );
-    //printf_enc("DISPLAY: Input Field X = %d", field.x);
-    //printf_enc("DISPLAY: Input Field Y = %d", field.y);
-    //printf_enc("DISPLAY: Input Field Width = %d", field.width);
-   //printf_enc("DISPLAY: Input Field Height= %d", field.height);
 
     bitmap_len = add_bitmap_data(output, field.x, field.y, field.width,
                                  field.height, field.value);
     output += bitmap_len;
     *out_len += bitmap_len;
+  }
   }
 
   /* Set the correct message length after adding fields */
@@ -258,7 +249,7 @@ static uint32_t add_bitmap_data(uint8_t *output, uint16_t x, uint16_t y,
 void create_remove_overlay_msg(uint8_t *output, uint32_t *out_len, const char *form_id)
 {
   uint8_t *p_aad = output;
-  uint8_t op = OP_ADD_OVERLAY;
+  uint8_t op = OP_REMOVE_OVERLAY;
   uint16_t seq = htons(seq_no);
 
   memcpy(output, &seq, sizeof(uint16_t));

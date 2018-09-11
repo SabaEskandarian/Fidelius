@@ -14,6 +14,10 @@ from PIL import Image
 from bluetooth import *
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from bitarray import bitarray
+from subprocess import call
+import decode
+import os
+import RPi.GPIO as GPIO
 
 from tk import *
 
@@ -57,25 +61,16 @@ def get_data_from_client():
 def receive_bluetooth():
     buffer = []
     while True:
-        #logging.debug('Waiting for message')
         if len(buffer) < 4:
             buffer = get_data_from_client()
-           #  logging.debug(str(len(buffer)))
-                        
-        # Read the first word of the message
         seq_no, op, o_id = unpack('!HBB', buffer[0:BASE_HDR_LEN])
-        #logging.debug('Received packet: {:5}'.format(seq_no))
-        #logging.debug('Op code: {} Overlay ID: {}'.format(op, o_id))
         if op == OP_ADD_OVERLAY:
             if len(buffer) < ADD_OVERLAY_HDR_LEN:
                 return None
             else:
                 msg_len = unpack('!I', buffer[ADD_OVERLAY_HDR_LEN-4:ADD_OVERLAY_HDR_LEN])[0]
-                # Read the rest of the messgae into the buffer
-                # logging.debug(str(len(buffer)))
                 while (msg_len > (len(buffer))):
                     size = len(buffer)
-                    
                     buffer += get_data_from_client()
                 return buffer[0:msg_len]
 
@@ -94,33 +89,30 @@ def receive_bluetooth():
         else:
             return None
 
+
 def decrypt_message (msg):
     seq_no, op, o_id = unpack('!HBB', msg[0:BASE_HDR_LEN])
-    #newmsg = list(msg[BASE_HDR_LEN:BASE_HDR_LEN+30])
-    #inpValue = newmsg[0:newmsg.index('\0')+1]
-    #logging.debug("inp val has len: {} {}".format(len(inpValue), newmsg.index('\0')))   
-
     if op == OP_ADD_OVERLAY:
         inputVal = unpack('c'*BUFFER_LEN, msg[ADD_OVERLAY_HDR_LEN:ADD_OVERLAY_HDR_LEN+BUFFER_LEN])
         aad = msg[:ADD_OVERLAY_HDR_LEN]
         ct = msg[ADD_OVERLAY_HDR_LEN+BUFFER_LEN:-IV_LEN];
         nonce = msg[-IV_LEN:]
-       
+        aesgcm = AESGCM (binascii.unhexlify(secret_key))
+        try:
+            plaintext = aesgcm.decrypt (nonce ,ct, None)
+            buf = buffer(aad + bytearray(inputVal) + bytearray(plaintext))
+            logging.debug('Received packet: {:5}, decryption passed'.format(seq_no))
+            display_times.write('bm dec: {},%d\n'.format("".join(inputVal)) % (int(time.time()*1000)))
+        except:
+            buf = None
+            logging.debug('Received packet: {:5}, decryption failed'.format(seq_no))
+        GPIO.output(18, True)
     else:
-        aad = msg[:REMOVE_OVERLAY_HDR_LEN]
-        ct = msg[REMOVE_OVERLAY_HDR_LEN:REMOVE_OVERLAY_HDR_LEN+TAG_LEN]
-        nonce = msg[REMOVE_OVERLAY_HDR_LEN+TAG_LEN:]
-        
-
-    
-    aesgcm = AESGCM (binascii.unhexlify(secret_key))
-    try:
-        plaintext = aesgcm.decrypt (nonce ,ct, None)
-        buf = buffer(aad + bytearray(inputVal) + bytearray(plaintext))
-        logging.debug('Received packet: {:5}, decryption passed'.format(seq_no))
-    except:
+	try:
+	    GPIO.output(18, False)
+	except:
+	    print("caught gpio exception")
         buf = None
-        logging.debug('Received packet: {:5}, decryption failed'.format(seq_no))
     return buf
 
 def bits2byte(bits8):
@@ -131,7 +123,6 @@ def bits2byte(bits8):
     return result
 
 def byteToBits(byte):
-
     ret = [1 if digit=='1' else 0 for digit in bin(byte)[2:]]
     while(len(ret) < 8):
         ret.append(0)
@@ -145,71 +136,39 @@ def numBytesToEncodePixels(num):
 def parse_message(msg, overlays):
     seq_no, op, o_id = unpack('!HBB', msg[0:BASE_HDR_LEN])
     if op == OP_ADD_OVERLAY:
-        #newmsg = list(msg[BASE_HDR_LEN:BASE_HDR_LEN+30])
-        #inpValue = newmsg[0:newmsg.index('\0')+1]
-        #logging.debug(inpValue)
-        # Add the origin bitmap
+        logging.debug('decode bm,%d\n'% (int(time.time()*1000)))
         inputVal = unpack('c'*BUFFER_LEN, msg[ADD_OVERLAY_HDR_LEN:ADD_OVERLAY_HDR_LEN+BUFFER_LEN])
-        #logging.debug("".join(inputVal))
         field_iter = ADD_OVERLAY_HDR_LEN + BUFFER_LEN
-        
-        x, y, width, height = unpack('!HHHH', msg[field_iter:field_iter+8])
-        #RE-HYDRATE IMAGE BITMAP
-        #logging.debug("getting encodedstring")
-        encodedstring = "".join(map(lambda e: chr(ord(e)),msg[field_iter+8:field_iter+8+numBytesToEncodePixels(width*height)]))
-        ba = bitarray(endian='little')
-        #logging.debug("making bitarray")
-        ba.frombytes(encodedstring)
-        #logging.debug("reinflating bitarray to RBG format") #this next step is the most expensive ~20 ms
-        white = chr(255)
-        black = chr(0)
-        data = []
-        for bit in ba.to01():
-            if bit == "1":
-                data.append(white)
-                data.append(white)
-                data.append(white)
-                data.append(black)
-            else:
-                data.append(black)
-                data.append(black)
-                data.append(black)
-                data.append(white)
-        #data = [[chr(255),chr(255),chr(255)] if bit == "1" else [chr(0),chr(0),chr(0)] for bit in ba.to01()]
-        #logging.debug("flatening rgb data")
-        #data = [c for d in data for c in d]
-        #logging.debug("making image from bytes")
-        img = Image.frombytes('RGBA', (width, height), "".join(data))
 
-        form = Form(o_id, x, y, img)
-        form.inputBuff = "".join(inputVal)
+        x, y, width, height = unpack('!HHHH', msg[field_iter:field_iter+8])
+        encodedstring = "".join(map(lambda e: chr(ord(e)),msg[field_iter+8:field_iter+8+numBytesToEncodePixels(width*height)]))
+        data = decode.system(encodedstring, 1)
+        #logging.debug('draw bm,%d\n'% (int(time.time()*1000)))
+        origin_img = Image.frombytes('RGBA', (width, height), data)
         field_iter += numBytesToEncodePixels(width*height) + 8
+
+        print("adding input bm")
+        x, y, width, height = unpack('!HHHH', msg[field_iter:field_iter+8])
+        encodedstring = "".join(map(lambda e: chr(ord(e)),msg[field_iter+8:field_iter+8+numBytesToEncodePixels(width*height)]))
+        data = decode.system(encodedstring, 1)
+        #logging.debug('draw bm,%d\n'% (int(time.time()*1000)))
+        input_img = Image.frombytes('RGBA', (width, height), data)
+        field_iter += numBytesToEncodePixels(width*height) + 8
+
+        form = Form(o_id, x, y, origin_img, input_img)
+        form.inputBuff = "".join(inputVal)
+        
+
+
         # Add the field input bitmaps
         while(field_iter < len(msg)):
-            
+            #logging.debug('decode bm,%d\n'% (int(time.time()*1000)))
             x, y, width, height = unpack('!HHHH', msg[field_iter:field_iter+8])
             x += form.x
             y += form.y            
             encodedstring = "".join(map(lambda e: chr(ord(e)),msg[field_iter+8:field_iter+8+numBytesToEncodePixels(width*height)]))
-            ba = bitarray(endian='little')
-            ba.frombytes(encodedstring)
-            #data = [[chr(255),chr(255),chr(255)] if bit == "1" else [chr(0),chr(0),chr(0)] for bit in ba.to01()]
-            data = []
-            for bit in ba.to01():
-                if bit == "1":
-                    data.append(white)
-                    data.append(white)
-                    data.append(white)
-                    data.append(black)
-                else:
-                    data.append(black)
-                    data.append(black)
-                    data.append(black)
-                    data.append(white)
-            #data = [c for d in data for c in d]
-            #logging.debug("w {} h {} d {}".format(width, height, len(data)))
-            img = Image.frombytes('RGBA', (width, height), "".join(data))
-
+            data = decode.system(encodedstring, 0)
+            img = Image.frombytes('RGBA', (width, height), (data))
             form.fields.append(Field(x, y, img))
             # Increase our iterator by the number of bytes used for this field
             field_iter += numBytesToEncodePixels(width*height) + 8;
@@ -219,6 +178,7 @@ def parse_message(msg, overlays):
         del overlays[o_id]
     elif op == OP_CLEAR_OVERLAYS:
         overlays.clear()
+    return op
 
 if __name__ == "__main__":
     numPackets = 0
@@ -227,6 +187,10 @@ if __name__ == "__main__":
     outputFile = open('socketData', 'w+')
     encodingFile = open('encoding.bin', 'w+')
     display_times = open('display_times.csv', 'w+')
+    GPIO.setwarnings(False)
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(18,GPIO.OUT)
+    GPIO.output(18, False)
 
     def gentle_shutdown(*args):
         if client_sock:
@@ -258,32 +222,35 @@ if __name__ == "__main__":
             try:
                 msg = receive_bluetooth()
                 
-            except BluetoothError:
+            except:
                 client_sock.close()
                 server_sock.close()
-                server_sock, client_sock = init_bluetooth()
                 logging.debug('Blueooth connection lost')
+                logging.debug('Bluetooth starting')
+                server_sock, client_sock = init_bluetooth()
+                logging.debug('Bluetooth connected')
+                overlays = {}
+                continue;
             if not msg:
                 logging.debug('Message malformed/message error')
                 continue
-            # Decrypt and check the tag
-            inputVal = unpack('c'*BUFFER_LEN, msg[ADD_OVERLAY_HDR_LEN:ADD_OVERLAY_HDR_LEN+BUFFER_LEN])
-            display_times.write('bitmap received {},%d\n'.format("".join(inputVal)) % (int(time.time()*1000)))
-            logging.debug("received bitmap with: {}".format("".join(inputVal)))
             msg = decrypt_message (msg)
             if not msg:
-                #logging.debug('Decryption failed')
+                sock.send(pickle.dumps({}, -1))    
                 continue
             #logging.debug('Decryption passed')
             # Parse the message
-            parse_message(msg, overlays)
+            op = parse_message(msg, overlays)
             #logging.debug("pickling overlay")
-            display_times.write('bm pickle: {},%d\n'.format("".join(inputVal)) % (int(time.time()*1000)))
-            display_times.flush()
-            data = pickle.dumps(overlays, -1)
-            sock.send(data)
-            #logging.debug('Sending overlays {}'.format(len(data)))
-            
+            #display_times.write('bm pickle: {},%d\n'.format("".join(inputVal)) % (int(time.time()*1000)))
+            #display_times.flush()
+	    if op == OP_ADD_OVERLAY:
+		print("sending an overlay")
+                data = pickle.dumps(overlays, -1)
+        	sock.send(data)
+	    else:
+		print("clearing overlay")
+		sock.send(pickle.dumps({}, -1))    
     except Exception as e:
         logging.exception(e)
         gentle_shutdown()

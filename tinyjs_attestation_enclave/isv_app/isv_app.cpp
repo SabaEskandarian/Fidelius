@@ -52,6 +52,8 @@
 #include <unistd.h>
 #include <string>
 
+
+
 // Needed for definition of remote attestation messages.
 #include "remote_attestation_result.h"
 
@@ -114,11 +116,15 @@ bool NODEVICES_MODE = 0;
 
 KeyboardDriver KB(NODEVICES_MODE ? "keyboard_test" : "/dev/ttyACM0",NODEVICES_MODE ? "empty" : "/dev/ttyACM1");
 
+
 ofstream myfile;
 ofstream em_timestamps("em_timestamps.csv");
+ofstream ex_timestamps("ex_timestamps.csv");
+long attestationBeginTime;
 mutex myfileLock;
 mutex timesLock;
 
+int runAttestation();
 
 void threadSafePrint(string str) {
   myfileLock.lock();
@@ -207,6 +213,25 @@ void ocall_print_time(const char *str)
    printToTimes(str);
 }
 
+std::string hexStr(unsigned char* data, int len)
+{
+    std::stringstream ss;
+    ss << std::hex;
+    for(int i=0;i<len;++i) {
+      if ((int)data[i] > 15) {
+        ss << '0' << (int)data[i];
+      } else {
+        
+      }
+    }
+    return ss.str();
+}
+
+void ocall_print_hex(const char *str)
+{
+   threadSafePrint(hexStr((unsigned char*)str, strlen(str)));
+}
+
 sgx_status_t enc_make_http_request(const char *method, const char *url,
                                    const char *headers, const char *request_data,
                                    uint8_t *p_mac, int *ret_code)
@@ -217,6 +242,8 @@ sgx_status_t enc_make_http_request(const char *method, const char *url,
     //TODO: INTERACT WITH BROWSER
     return SGX_SUCCESS;
 }
+
+
 
 // Some utility functions to output some of the data structures passed between
 // the ISV app and the remote attestation service provider.
@@ -326,10 +353,14 @@ bool DEBUG_MODE = 1;
 this ivar is for debugging only, it will close the debug
 log after the EM recieves/parses the specified number of commands.
 */
-int eventsUntilCloseLog = 40;
+int eventsUntilCloseLog = 400;
 
+
+
+bool web_enclave_setup = false;
 bool runningManager = true;
-pair<string, string> focusInput;
+bool done_with_overlay = false;
+pair<string, string> focusInput = make_pair("None", "None");
 uint8_t sharedOverlayPacket[524288];
 uint32_t sharedOutLen;
 condition_variable_any cv;
@@ -339,7 +370,23 @@ mutex keyboard_mutex;
 mutex overlay_mutex;
 mutex curInputMutex;
 
+int to_int(int c) {
+  if (not isxdigit(c)) return -1; // error: non-hexadecimal digit found
+  if (isdigit(c)) return c - '0';
+  if (isupper(c)) c = tolower(c);
+  return c - 'a' + 10;
+}
 
+template<class InputIterator, class OutputIterator> int unhexlify(InputIterator first, InputIterator last, OutputIterator ascii) {
+  while (first != last) {
+    int top = to_int(*first++);
+    int bot = to_int(*first++);
+    if (top == -1 or bot == -1)
+      return -1; // error
+    *ascii++ = (top << 4) + bot;
+  }
+  return 0;
+}
 
 void handleOnBlur(string formName, string inputName, double mouseX, double mouseY) {
     curInputMutex.lock();
@@ -347,10 +394,10 @@ void handleOnBlur(string formName, string inputName, double mouseX, double mouse
     if (DEBUG_MODE) 
       myfile << "BLUR on form: " << formName << " input: " << inputName << " at: " << mouseX << ", " << mouseY << endl;
     myfileLock.unlock();
-    focusInput = make_pair("","");
+    focusInput = make_pair("None","None");
 
     uint8_t b = 0;
-    //KB.changeMode(&b, 1);
+    KB.changeMode(&b, 1);
     sgx_status_t ret;
     onBlur(enclave_id, &ret); //ECALL
     cv.notify_all();
@@ -374,7 +421,7 @@ void handleOnFocus(string formName, string inputName, double x, double y, double
     myfileLock.unlock();
     focusInput = make_pair(formName, inputName);
     uint8_t b = 1;
-    //KB.changeMode(&b, 1);
+    KB.changeMode(&b, 1);
     sgx_status_t ret;
     onFocus(enclave_id, &ret, formName.c_str(), inputName.c_str(), 
           (uint16_t)x, (uint16_t)y, (uint16_t)w, (uint16_t)h); //ECALL
@@ -389,20 +436,26 @@ void addForm(vector<string> argv)
     //TO DO: make ecall for adding a form
     sgx_status_t ret;
     string name = argv[1];
+
     string signature = argv[2];
+    char ascii[signature.length()/2+1];
+    ascii[signature.length()/2] = '\0';
+    unhexlify(argv[2].c_str(), argv[2].c_str() + signature.length(), ascii);
+
     string origin = argv[3];
 
     uint16_t formX = (uint16_t)(stod(argv[4], NULL)*SCALE_X);
     uint16_t formY = (uint16_t)(stod(argv[5], NULL)*SCALE_Y);
     
     string onsub = argv[6];
-    //myfile << "ADD FORM (x,y): (" << formX << "," << formY << ")" << endl; 
+    myfile << "ADD FORM (x,y): (" << formX << "," << formY << ")" << endl; 
+    myfile << "with name: " << name  << " signature: " << signature << endl;
     add_form(enclave_id, &ret, name.c_str(), name.length()+1, 
              origin.c_str(), origin.length()+1, formX, formY, onsub.c_str(), onsub.length()+1); //ECALL
     if (ret != SGX_SUCCESS) 
         myfile << "!!!add_form ecall FAILED" << endl;
 	
-	//myfile << "ADD FORM with name: " << name  << " signature: " << signature << endl;
+	
 	for (int i = 7; i < argv.size(); i+=5) 
   {
       string inputName = argv[i];
@@ -417,12 +470,15 @@ void addForm(vector<string> argv)
       if (!(i + 5 < argv.size()))
           myfile << "RUNNING VALIDATION" << endl;
       add_input(enclave_id, &ret, name.c_str(), name.length() + 1, inputName.c_str(), inputName.length() + 1,
-                (uint8_t *)(signature.c_str()), signature.length() + 1,
+                (uint8_t *)(ascii), signature.length()/2+1,
                 (i + 5 < argv.size()) ? 0 : 1, x, y, h, w); //ECALL
                                                               //0,x,y,h,w);
       if (ret != SGX_SUCCESS)
           myfile << "!!!add_input ecall FAILED" << endl;
     }
+    web_enclave_setup = true;
+    cv.notify_all();
+    ex_timestamps << "added a form," << absTime() - attestationBeginTime << endl;
 }
 void addScript(string sign, string script)
 {
@@ -432,6 +488,7 @@ void addScript(string sign, string script)
         myfile << "ADDED SCRIPT"<< endl;
     if (ret != SGX_SUCCESS) 
         myfile << "!!!add_script ecall FAILED" << endl;
+    ex_timestamps << "added a script," << absTime() - attestationBeginTime << endl;
 }
 
 //The second parameter should really be some kind of struct to take parameters 
@@ -472,14 +529,26 @@ void initializeEnclave(string origin)
     //TO DO: write code to initialize an enclave, should be similar to SampleEnclave init()
     if (DEBUG_MODE)
         myfile << "INIT enclave with origin: " << origin << endl;
+      attestationBeginTime = absTime();
+    //runAttestation();
 }
 
 void terminateEnclave(string origin)
 {
-    //TO DO: write code to terminate an enclave
-    sgx_destroy_enclave(enclave_id);
+  if (web_enclave_setup) {
+    uint8_t b = 0;
+    KB.changeMode(&b, 1);
+    sgx_status_t ret;
+    onBlur(enclave_id, &ret); //ECALL
+    done_with_overlay = true;
+    cv.notify_all();
+    //connection.channel_close();
     if (DEBUG_MODE)
         myfile << "TERMINATE enclave with id: " << enclave_id << endl;
+
+    //sgx_destroy_enclave(enclave_id);
+  }
+
 }
 void submitHttpReq(string request)
 {
@@ -673,13 +742,16 @@ string getPacketStr(uint8_t *outBuff) {
 
 void sendToDisplay()
 {
+
     if (NODEVICES_MODE) {
         return;
     }
+    BluetoothChannel connection;
 
     threadSafePrint("CREATED BT THREAD");
-    BluetoothChannel connection;
+    
     ofstream em_times("em_bt_times.csv");
+    
     int numPacketsSent = 0;
     if (connection.channel_open() < 0)
     {
@@ -692,8 +764,10 @@ void sendToDisplay()
     mutex overlayInit_mutex;
     unique_lock<mutex> lk(overlayInit_mutex);
     uint32_t out_len;
-    while(true) {      
+    while(true) {
+           
       overlaycv.wait(lk,[]{return overlayPacketInitialized;});
+      if (done_with_overlay) break; 
       overlay_mutex.lock();
       out_len = sharedOutLen;
       memcpy(outBuff, sharedOverlayPacket, out_len);
@@ -711,8 +785,12 @@ void sendToDisplay()
         numPacketsSent++;
       }
       //em_times << "bluetooth sent," << absTime() << endl;
-      usleep(170000);
+      usleep(150000);
     }
+    create_remove_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str());
+    connection.channel_send((char *)outBuff, (int)out_len);
+    myfile << "sending remove overlay message" << endl;
+
     
 }
 
@@ -725,18 +803,19 @@ void listenForKeyboard()
     ofstream em_times("em_kb_times.csv");
     int numPacketsSent = 0;
     threadSafePrint("CREATED KB THREAD");
+    uint8_t outBuff[524288];
+    uint32_t out_len;
     while (true)
     {
         unique_lock<mutex> lk(keyboard_mutex);
-        cv.wait(lk,[]{return focusInput != pair<string, string>("","");});
-        curInputMutex.lock();        
-
-
-        uint8_t outBuff[524288];
-        uint32_t out_len;
-        create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
-        em_times << "wait for refresh: " << getPacketStr(outBuff) << "," << absTime() << endl;
-        curInputMutex.unlock();
+        cv.wait(lk,[]{return web_enclave_setup || done_with_overlay;});
+        if(!done_with_overlay) {
+          curInputMutex.lock();
+          create_add_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str()); //make display ECALL
+          em_times << "wait for refresh: " << getPacketStr(outBuff) << "," << absTime() << endl;
+          curInputMutex.unlock();
+        }
+        
         overlay_mutex.lock();
         memcpy(sharedOverlayPacket, outBuff, out_len);
         sharedOutLen = out_len;
@@ -755,10 +834,7 @@ void listenForKeyboard()
         if (ret != SGX_SUCCESS) 
           threadSafePrint("ERROR DECRYPTING CHAR");
     }
-    //uint32_t out_len;
-    //uint8_t outBuff[524288];
-    //create_remove_overlay_msg(enclave_id, outBuff, &out_len, focusInput.first.c_str());
-    //connection.channel_close();
+    
 }
 
 ////////////////////////////////
@@ -769,8 +845,57 @@ void listenForKeyboard()
 #define _T(x) x
 int main(int argc, char *argv[])
 {
+   
     myfile.open ("debug_log.txt");
-    int ret = 0;
+    runAttestation();
+
+
+    thread kb_thread(listenForKeyboard);
+    thread ds_thread(sendToDisplay);
+    
+    //addForm(vector<string>({"3", "myForm", "sig", "origin", "123", "312", "inp1", "1", "1", "1", "1", "inp2", "12", "32", "2", "2"}));
+    while (1)
+    {
+        unsigned int length = 0;
+        //read the first four bytes (=> Length)
+        for (int i = 0; i < 4; i++)
+        {
+            unsigned int read_char = getchar();
+            length = length | (read_char << i * 8);
+        }
+
+
+        string msg = "";
+
+        for (int i = 0; i < length; i++)
+        {
+            msg += getchar();
+        }
+
+        msg = msg.substr(1, msg.length() - 2);
+
+        if (!parseMessage(msg))
+        {
+            break;
+        }
+    }
+
+    myfile << "SHUTTING DOWN EM" << endl;
+
+    myfile.close();
+
+    sgx_destroy_enclave(enclave_id);
+
+    kb_thread.join();
+    ds_thread.join();
+    return 0;
+}
+
+int runAttestation()
+{
+  //attestationBeginTime = absTime();
+  ex_timestamps << "attestation begin," << absTime() << endl; 
+  int ret = 0;
     ra_samp_request_header_t *p_msg0_full = NULL;
     ra_samp_response_header_t *p_msg0_resp_full = NULL;
     ra_samp_request_header_t *p_msg1_full = NULL;
@@ -798,7 +923,7 @@ int main(int argc, char *argv[])
 #define VERIFICATION_INDEX_IS_VALID() (verify_index > 0 && \
                                        verify_index <= verification_samples)
 #define GET_VERIFICATION_ARRAY_INDEX() (verify_index - 1)
-    fprintf(OUTPUT, "argc: %d \n", argc);
+    /*fprintf(OUTPUT, "argc: %d \n", argc);
     for (int i = 0; i < argc; i++)
     {
 
@@ -822,7 +947,7 @@ int main(int argc, char *argv[])
             fprintf(OUTPUT, "\nUsing a verification index uses precomputed messages to assist debugging the remote attestation service provider.\n");
             return -1;
         }
-    }
+    }*/
 
     // Preparation for remote attestation by configuring extended epid group id.
     {
@@ -1301,75 +1426,5 @@ CLEANUP:
 
     //--------------------------end testing-----------------------------
 
-    std::string oneLine = "";
-
-    thread kb_thread(listenForKeyboard);
-    thread ds_thread(sendToDisplay);
-    
-    //addForm(vector<string>({"3", "myForm", "sig", "origin", "123", "312", "inp1", "1", "1", "1", "1", "inp2", "12", "32", "2", "2"}));
-    while (1)
-    {
-        unsigned int length = 0;
-        //read the first four bytes (=> Length)
-        for (int i = 0; i < 4; i++)
-        {
-            unsigned int read_char = getchar();
-            length = length | (read_char << i * 8);
-        }
-
-
-        string msg = "";
-
-        for (int i = 0; i < length; i++)
-        {
-            msg += getchar();
-        }
-
-        msg = msg.substr(1, msg.length() - 2);
-
-        if (!parseMessage(msg))
-        {
-            break;
-        }
-    }
-
-    myfile << "SHUTTING DOWN EM" << endl;
-
-    myfile.close();
-
-    sgx_destroy_enclave(enclave_id);
-    //fclose(OUTPUT);
-
-    //fclose(stderr);
-    ////////////////////////////////////
-    //char s[1000] = "print(\"This is a test\");result=1;";
-    //ret = run_js(enclave_id, &status, s, strlen(s)+1);
-    //printf("testing: %s\n", s);
-    //char* c = "test";
-    //char* f = "field";
-    // add_form(enclave_id, &status, c, 5);
-    // if(status != SGX_SUCCESS) {
-    //     //printf("error1");
-    // }
-    // add_form(enclave_id, &status, c, 5);
-    // if(status != SGX_ERROR_INVALID_PARAMETER) {
-    //     //printf("error2");
-    // }
-    // add_input(enclave_id, &status, c, 5, f, 6);
-    // if(status != SGX_SUCCESS) {
-    //     //printf("error3");
-    // }
-    // onFocus(enclave_id, &status, c, f);
-    // if(status != SGX_SUCCESS) {
-    //     //printf("error4");
-    // }
-    // onBlur(enclave_id);
-
-    //sgx_destroy_enclave(enclave_id);
-
-    //printf("\nEnter a character before exit ...\n");
-    //getchar();
-    kb_thread.join();
-    ds_thread.join();
-    return ret;
+    ex_timestamps << "attestation end," <<  absTime() << endl; 
 }

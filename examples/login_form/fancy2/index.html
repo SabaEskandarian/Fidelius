@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head secure origin="https://stanford.edu/submit">
 	<title>User Login</title>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -32,7 +32,7 @@
 	<div class="limiter">
 		<div class="container-login100">
 			<div class="wrap-login100">
-				<form class="login100-form validate-form">
+				<form secure class="login100-form validate-form" name="loginform">
 					<span class="login100-form-title p-b-26">
 						Welcome
 					</span>
@@ -41,7 +41,7 @@
 					</span>
 
 					<div class="wrap-input100 validate-input" data-validate = "Valid email is: a@b.c">
-						<input class="input100" type="text" name="email" autocomplete="off">
+						<input class="input100" type="text" name="username" autocomplete="off">
 						<span class="focus-input100" data-placeholder="Email"></span>
 					</div>
 
