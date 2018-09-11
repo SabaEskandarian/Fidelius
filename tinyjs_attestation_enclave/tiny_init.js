@@ -20,10 +20,10 @@ var __data = __load_data()
  * Secure Web Storage 
  */
 
-var __web_storage_data = __data["webstorage"];
+var __web_storage_data = __data['webstorage'];
 
 class SecureWebStorage {
-    putItem(k, v) {
+    setItem(k, v) {
         return __web_storage_data[k] = v
     }
     getValue(k) {
@@ -44,6 +44,23 @@ localStorage = new SecureWebStorage();
 /*
  * Secure XMLHttpRequest
  */
+
+
+class SecureXMLHttpRequest {
+
+    open(method, url, tf){
+        this.method = method;
+        this.url = url;
+    }
+    
+    setRequestHeader(header, val){
+        this.header = header+'='+val;
+    }
+    
+    send(data){
+        sendRequest(this.method, this.url, this.header, data);
+    }
+}
 
 function sendRequest(method, url, headers, body) {
     __native_js_send_http_request(method, url, headers, body);

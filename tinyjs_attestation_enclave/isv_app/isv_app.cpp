@@ -167,39 +167,39 @@ void hexStrtoBytes(char *char_stream, int stream_len, uint8_t *byte_array)
     }
 }
 
-size_t ocall_get_file_size(const char *fname)
+void ocall_get_file_size(size_t* len)
 {
-    std::string name = std::string(fname);
-    ifstream file(name, ifstream::in | ifstream::binary);
+    std::string name = std::string("localStorage.data");
+    ifstream file(name, ifstream::ate | ifstream::binary);
     if (file.good())
     {
-        file.seekg(0, ios::end);
-        int len = file.tellg();
+        *len = file.tellg();
         file.close();
-        return (size_t)len;
     }
     else
     {
-        return 0;
+        *len = 0;
     }
+    //myfile << "saying len is " <<*len <<"\n";
 }
 
-void ocall_write_file(const char *fname, const char *data, size_t len)
+void ocall_write_file(uint8_t* data, size_t len)
 {
-    std::string name = std::string(fname);
-    ofstream file;
-    file.open(name);
-    file << std::string(data) << endl;
+    std::string name = "localStorage.data";
+    //myfile << "writing to file \n content: " << (int)data[0] <<"\n length: "<<len<<"\n";
+    ofstream file(name, ofstream::binary);
+    //file << data << endl;
+    file.write ((char*)data, len);
     file.flush();
     file.close();
 }
 
-void ocall_read_file(const char *fname, char *data, size_t len)
+void ocall_read_file(uint8_t* data, size_t len)
 {
-    std::string name = std::string(fname);
-    ifstream file(name, std::ios::binary | std::ios::ate);
-    file.seekg(0, std::ios::beg);
-    file.read(data, len);
+    std::string name = "localStorage.data";
+    ifstream file(name, ifstream::binary);
+    file.read((char*) data, len);
+    //myfile << "reading from file \n content: " << (int)data[0] <<"\n length: "<<len<<"\n";
     file.close();
 }
 
