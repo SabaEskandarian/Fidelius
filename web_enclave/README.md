@@ -49,9 +49,7 @@ Due to some complications with Bluetooth pairing, the first time this is run wit
 
 Inside `Fidelius/tinyjs_attestation_enclave/isv_app/sgx_display/btchannel.cpp`, `BT_SCAN` must be set to `1` and recompiled. Additionally, the Raspberry Pi Bluetooth must be discoverable, this is accessible by clicking on the Bluetooth icon in the top right of the screen. If this is done correctly the host computer will scan discoverable Bluetooth devices and connect to a device with the name "raspberrypi". If using a new Raspberry Pi, the Bluetooth address must be updated underneath the `BT_SCAN` definition, the Bluetooth address should get printed in the debug log when scanning. For future uses `BT_SCAN` can be set back to `0` and making the Raspberry Pi discoverable is not necessary.
 
-## Other Info for SGX
-
-### How to Build/Execute the SGX Code
+## How to Build/Execute SGX Code
 
 1. Install Intel(R) SGX SDK for Linux* OS
 
@@ -59,31 +57,24 @@ Inside `Fidelius/tinyjs_attestation_enclave/isv_app/sgx_display/btchannel.cpp`, 
 
     a. Hardware Mode, Debug build:
 
-        $ make
+    ```$ make```
     
     b. Hardware Mode, Pre-release build:
     
-    $ make SGX_PRERELEASE=1 SGX_DEBUG=0
+    ```$ make SGX_PRERELEASE=1 SGX_DEBUG=0```
     
-    c. Hardware Mode, Release build:
     
-    $ make SGX_DEBUG=0
+    c. Simulation Mode, Debug build:
     
-    d. Simulation Mode, Debug build:
+    ```$ make SGX_MODE=SIM```
     
-    $ make SGX_MODE=SIM
+    d. Simulation Mode, Pre-release build:
     
-    e. Simulation Mode, Pre-release build:
-    
-    $ make SGX_MODE=SIM SGX_PRERELEASE=1 SGX_DEBUG=0
-    
-    f. Simulation Mode, Release build:
-    
-    $ make SGX_MODE=SIM SGX_DEBUG=0
+    ```$ make SGX_MODE=SIM SGX_PRERELEASE=1 SGX_DEBUG=0```
 
 3. To execute the binary directly: (this should not apply for normal use of Fidelius)
 
-$ ./app
+    ```$ ./app```
 
-4. Remember to "make clean" before switching build mode
+4. Remember to "`make clean`" before switching build mode
 
