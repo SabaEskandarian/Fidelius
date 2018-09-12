@@ -54,20 +54,36 @@ Inside `Fidelius/tinyjs_attestation_enclave/isv_app/sgx_display/btchannel.cpp`, 
 ### How to Build/Execute the SGX Code
 
 1. Install Intel(R) SGX SDK for Linux* OS
+
 2. Build the project with the prepared Makefile:
+
     a. Hardware Mode, Debug build:
+
         $ make
+    
     b. Hardware Mode, Pre-release build:
-        $ make SGX_PRERELEASE=1 SGX_DEBUG=0
+    
+    $ make SGX_PRERELEASE=1 SGX_DEBUG=0
+    
     c. Hardware Mode, Release build:
-        $ make SGX_DEBUG=0
+    
+    $ make SGX_DEBUG=0
+    
     d. Simulation Mode, Debug build:
-        $ make SGX_MODE=SIM
+    
+    $ make SGX_MODE=SIM
+    
     e. Simulation Mode, Pre-release build:
-        $ make SGX_MODE=SIM SGX_PRERELEASE=1 SGX_DEBUG=0
+    
+    $ make SGX_MODE=SIM SGX_PRERELEASE=1 SGX_DEBUG=0
+    
     f. Simulation Mode, Release build:
-        $ make SGX_MODE=SIM SGX_DEBUG=0
+    
+    $ make SGX_MODE=SIM SGX_DEBUG=0
+
 3. To execute the binary directly: (this should not apply for normal use of Fidelius)
-    $ ./app
+
+$ ./app
+
 4. Remember to "make clean" before switching build mode
 
