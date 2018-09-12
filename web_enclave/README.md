@@ -51,12 +51,7 @@ Inside `Fidelius/tinyjs_attestation_enclave/isv_app/sgx_display/btchannel.cpp`, 
 
 ## Other Info for SGX
 
-### Purpose of RemoteAttestation
-The project demonstrates:
-- How an application enclave can attest to a remote party
-- How an application enclave and the remote party can establish a secure session
-
-### How to Build/Execute the Sample Code (keeping this for now, it should go away)
+### How to Build/Execute the SGX Code
 
 1. Install Intel(R) SGX SDK for Linux* OS
 2. Build the project with the prepared Makefile:
@@ -72,7 +67,7 @@ The project demonstrates:
         $ make SGX_MODE=SIM SGX_PRERELEASE=1 SGX_DEBUG=0
     f. Simulation Mode, Release build:
         $ make SGX_MODE=SIM SGX_DEBUG=0
-3. Execute the binary directly: (this should not apply for us)
+3. To execute the binary directly: (this should not apply for normal use of Fidelius)
     $ ./app
 4. Remember to "make clean" before switching build mode
 
