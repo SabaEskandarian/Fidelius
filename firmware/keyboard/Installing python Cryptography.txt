@@ -1,0 +1,6 @@
+# sudo apt-get update
+# sudo apt-get upgrade
+# sudo apt-get install gcc libffi-dev libssl-dev python-dev
+# sudo pip install cryptography
+
+Link: https://raspberrypi.stackexchange.com/questions/62364/installing-cryptography-using-pip-on-raspbian-jessy-image/62413#62413
