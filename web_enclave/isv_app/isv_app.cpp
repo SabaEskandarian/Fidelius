@@ -112,9 +112,9 @@ uint8_t *attestation_msg_samples[] =
 
 using namespace std;
 
-bool NODEVICES_MODE = 0;
+bool NODEVICES_MODE = true;
 
-KeyboardDriver KB(NODEVICES_MODE ? "keyboard_test" : "/dev/ttyACM0",NODEVICES_MODE ? "empty" : "/dev/ttyACM1");
+KeyboardDriver KB(NODEVICES_MODE ? "keyboard_test" : "/dev/ttyACM0","/dev/ttyACM1");
 
 
 ofstream myfile;
@@ -218,18 +218,19 @@ std::string hexStr(unsigned char* data, int len)
     std::stringstream ss;
     ss << std::hex;
     for(int i=0;i<len;++i) {
-      if ((int)data[i] > 15) {
+      if ((int)data[i] < 16) {
         ss << '0' << (int)data[i];
       } else {
-        
+        ss << (int)data[i];
       }
+    myfile << "str = " << ss.str().length() << endl;
     }
     return ss.str();
 }
 
-void ocall_print_hex(const char *str)
+void ocall_print_hex(const char *str, size_t len)
 {
-   threadSafePrint(hexStr((unsigned char*)str, strlen(str)));
+   threadSafePrint(hexStr((unsigned char*)str, len));
 }
 
 sgx_status_t enc_make_http_request(const char *method, const char *url,
@@ -453,7 +454,7 @@ void addForm(vector<string> argv)
     add_form(enclave_id, &ret, name.c_str(), name.length()+1, 
              origin.c_str(), origin.length()+1, formX, formY, onsub.c_str(), onsub.length()+1); //ECALL
     if (ret != SGX_SUCCESS) 
-        myfile << "!!!add_form ecall FAILED" << endl;
+        myfile << "add_form ecall FAILED " << ret << endl;
 	
 	
 	for (int i = 7; i < argv.size(); i+=5) 
@@ -474,7 +475,7 @@ void addForm(vector<string> argv)
                 (i + 5 < argv.size()) ? 0 : 1, x, y, h, w); //ECALL
                                                               //0,x,y,h,w);
       if (ret != SGX_SUCCESS)
-          myfile << "!!!add_input ecall FAILED" << endl;
+          myfile << "add_input ecall FAILED " << ret << endl;
     }
     web_enclave_setup = true;
     cv.notify_all();
@@ -831,8 +832,8 @@ void listenForKeyboard()
 
         
         get_keyboard_chars(enclave_id, &ret, bytebuff); //make keyboard ECALL
-        if (ret != SGX_SUCCESS) 
-          threadSafePrint("ERROR DECRYPTING CHAR");
+        //if (ret != SGX_SUCCESS) 
+          //threadSafePrint("ERROR DECRYPTING CHAR");
     }
     
 }
@@ -848,6 +849,7 @@ int main(int argc, char *argv[])
    
     myfile.open ("debug_log.txt");
     runAttestation();
+    threadSafePrint("done with attestation");
 
 
     thread kb_thread(listenForKeyboard);
@@ -914,10 +916,10 @@ int runAttestation()
 
     FILE *OUTPUT = fopen("EM_report.txt", "w"); //stdout;
 
-    if (NODEVICES_MODE){
+    /*if (NODEVICES_MODE){
         fprintf(OUTPUT, "Running in NODEVICES_MODE\n");
         fflush(OUTPUT);
-    }
+    }*/
     ////fprintf(stdout, "\nhelp1 \n");
 
 #define VERIFICATION_INDEX_IS_VALID() (verify_index > 0 && \

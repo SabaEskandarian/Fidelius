@@ -52,75 +52,33 @@
 #define FOCUS_ON 1
 #define FOCUS_OFF 0
 
-//#define timeNow() std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count()
 
-// This is the public EC key of the SP. The corresponding private EC key is
-// used by the SP to sign data used in the remote attestation SIGMA protocol
-// to sign channel binding data in MSG2. A successful verification of the
-// signature confirms the identity of the SP to the ISV app in remote
-// attestation secure channel binding. The public EC key should be hardcoded in
-// the enclave or delivered in a trustworthy manner. The use of a spoofed public
-// EC key in the remote attestation with secure channel binding session may lead
-// to a security compromise. Every different SP the enlcave communicates to
-// must have a unique SP public key. Delivery of the SP public key is
-// determined by the ISV. The TKE SIGMA protocl expects an Elliptical Curve key
-// based on NIST P-256
-static const sgx_ec256_public_t g_sp_pub_key = {
-    {0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
-     0x85, 0xd0, 0x3a, 0x62, 0x37, 0x30, 0xae, 0xad,
-     0x3e, 0x3d, 0xaa, 0xee, 0x9c, 0x60, 0x73, 0x1d,
-     0xb0, 0x5b, 0xe8, 0x62, 0x1c, 0x4b, 0xeb, 0x38},
-    {0xd4, 0x81, 0x40, 0xd9, 0x50, 0xe2, 0x57, 0x7b,
-     0x26, 0xee, 0xb7, 0x41, 0xe7, 0xc6, 0x14, 0xe2,
-     0x24, 0xb7, 0xbd, 0xc9, 0x03, 0xf2, 0x9a, 0x28,
-     0xa8, 0x3c, 0xc8, 0x10, 0x11, 0x14, 0x5e, 0x06}
-
+static sgx_ec256_private_t g_sp_priv_key = {
+    {
+        0x90, 0xe7, 0x6c, 0xbb, 0x2d, 0x52, 0xa1, 0xce,
+        0x3b, 0x66, 0xde, 0x11, 0x43, 0x9c, 0x87, 0xec,
+        0x1f, 0x86, 0x6a, 0x3b, 0x65, 0xb6, 0xae, 0xea,
+        0xad, 0x57, 0x34, 0x53, 0xd1, 0x03, 0x8c, 0x01
+    }
+};
+    
+    // This is the public EC key of SP, this key is hard coded in isv_enclave.
+    // It is based on NIST P-256 curve. Not used in the SP code.
+static sgx_ec256_public_t g_sp_pub_key = {
+    {
+        0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
+        0x85, 0xd0, 0x3a, 0x62, 0x37, 0x30, 0xae, 0xad,
+        0x3e, 0x3d, 0xaa, 0xee, 0x9c, 0x60, 0x73, 0x1d,
+        0xb0, 0x5b, 0xe8, 0x62, 0x1c, 0x4b, 0xeb, 0x38
+    },
+    {
+        0xd4, 0x81, 0x40, 0xd9, 0x50, 0xe2, 0x57, 0x7b,
+        0x26, 0xee, 0xb7, 0x41, 0xe7, 0xc6, 0x14, 0xe2,
+        0x24, 0xb7, 0xbd, 0xc9, 0x03, 0xf2, 0x9a, 0x28,
+        0xa8, 0x3c, 0xc8, 0x10, 0x11, 0x14, 0x5e, 0x06
+    }
 };
 
-/* ==========
- * Public Key
- * ==========
- * 
- * We use this to validate the signature of forms/scripts signatures.  
- * 
- * XXX: For the moment, the key is hard-coded. The future version will
- * have to extract the public key from a certificate sent by the remote
- * origin. The enclave will implement the validation of certificate using
- * a root certificate store in an "system" enclave.
- */
-/*
-static const sgx_ec256_public_t test_p_key = {
-    {0xae, 0xc5, 0x8b, 0x2e, 0x23, 0x5b, 0xb7, 0xe7,
-     0x9f, 0x1a, 0xd0, 0x5e, 0x4b, 0x7c, 0x5e, 0xf0,
-     0x7c, 0x13, 0xdb, 0xf3, 0xee, 0xed, 0xbd, 0x7f,
-     0x1f, 0xdd, 0x55, 0x2c, 0x7e, 0x79, 0x43, 0x58},
-    {0xf6, 0x07, 0x87, 0xef, 0x5d, 0xb4, 0x47, 0xab,
-     0x54, 0x46, 0x37, 0xb0, 0x5a, 0x19, 0x19, 0xda,
-     0xb6, 0x98, 0xd8, 0xeb, 0xeb, 0xc3, 0x81, 0x8f,
-     0x2c, 0xd2, 0x74, 0x7d, 0x6a, 0x3c, 0x9d, 0xf7}};
-
-/* ===========
- * Private Key
- * ===========
- * 
- * This is the private key to sign forms/scripts. This is used by the
- * developers to generate signatures of forms/scripts.
- * 
- * XXX: This key MUST be removed from here.
- */
-/*
-static sgx_ec256_private_t test_priv = {
-    {0x7d, 0xf4, 0xb0, 0xd1, 0x36, 0xbf, 0xb5, 0x97,
-     0xe1, 0x79, 0xb2, 0xee, 0xc8, 0x7a, 0x7b, 0xe2,
-     0x53, 0xb1, 0xbe, 0x2c, 0xa8, 0x2f, 0x34, 0x2e,
-     0x7a, 0x3f, 0xd1, 0x96, 0xa7, 0xe5, 0x8b, 0xe5}};
-
-/*
- * These are two keys. Unclear why they are still here
- */
-
-//New--this should be used to validate forms/js--at some point,
-//we can replace g_sp_pub_key with this
 static const sgx_ec256_public_t test_p_key = {
     {0xb9, 0x06, 0xb2, 0xe1, 0x03, 0xcc, 0x7b, 0x5d,
     0x00, 0xa4, 0xa9, 0x3b, 0xb7, 0x73, 0xf7, 0x24,
@@ -309,14 +267,9 @@ void printf_time(const char *fmt, ...)
     ocall_print_time(buf);
 }
 
-void printf_hex(const char *fmt, ...)
+void printf_hex(const char *fmt, size_t length)
 {
-    char buf[BUFSIZ] = {'\0'};
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(buf, BUFSIZ, fmt, ap);
-    va_end(ap);
-    ocall_print_hex(buf);
+    ocall_print_hex(fmt, length);
 }
 
 std::string intToString(int i)
@@ -637,11 +590,11 @@ sgx_status_t validate(uint8_t *p_message, uint32_t message_size,
 
     //printf_enc("hash: %s signature: %s", hash, p_signature);
 
-    ret = sgx_ecdsa_sign(p_message, strlen((const char*)p_message), &test_priv, p_signature, ecc_handle);
+    //ret = sgx_ecdsa_sign(p_message, strlen((const char*)p_message), &g_sp_priv_key, p_signature, ecc_handle);
 
-    printf_hex("%s",p_signature);
+    printf_hex((char *)p_signature, (size_t)sizeof(sgx_ec256_signature_t));
 
-    ret = sgx_ecdsa_verify(p_message, 57, &test_p_key, p_signature,
+    ret = sgx_ecdsa_verify(p_message, strlen((const char*)p_message), &g_sp_pub_key, p_signature,
                            &result, ecc_handle);
     if (ecc_handle)
     {
@@ -783,7 +736,7 @@ sgx_status_t add_input(const char *form_name, size_t len_form, const char *input
                 if (SGX_SUCCESS != validate((uint8_t *)form.c_str(), (uint32_t)form.length(), (sgx_ec256_signature_t *)p_sig_form))
                 {
                     // delete form, return failure
-                    printf_enc("FORM SIGNATURE DOES NOT MATCH");
+                    printf_enc("FORM SIGNATURE DOES NOT MATCH, %d", sizeof(sgx_ec256_signature_t));
                     f.validated = false;
                     //forms.erase((std::string) formName);
                     //return SGX_ERROR_INVALID_PARAMETER;
@@ -1211,7 +1164,7 @@ sgx_status_t get_keyboard_chars(uint8_t *p_src){
     sgx_thread_mutex_lock(curInputMutex);
     
     if(ENCLAVE_STATE == FOCUS_OFF) {
-        printf_enc("No input in focus.");
+        //printf_enc("No input in focus.");
         sgx_thread_mutex_unlock(curInputMutex);
         return SGX_ERROR_INVALID_PARAMETER;
     }
