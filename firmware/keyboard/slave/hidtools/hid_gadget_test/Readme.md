@@ -1,0 +1,1 @@
+This directory contains a simple program that produces hid keyboard reports.
