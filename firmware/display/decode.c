@@ -27,14 +27,14 @@ decode_system(PyObject *self, PyObject *args)
     	{
     		if (byte & 0x01) 
     		{
-    			buff[i*32 + x*4] = (char)0;
-    			buff[i*32 + x*4 + 1] = (char)117;
-    			buff[i*32 + x*4 + 2] = (char)0;
-    			buff[i*32 + x*4 + 3] = green ? (char)255 : 0;
+    			buff[i*32 + x*4] = (char)0x48;
+    			buff[i*32 + x*4 + 1] = (char)0x8b;
+    			buff[i*32 + x*4 + 2] = (char)0x49;
+    			buff[i*32 + x*4 + 3] = green ? (char)255 : (char)0;
     		} else {
-    			buff[i*32 + x*4] = (char)0;
-    			buff[i*32 + x*4 + 1] = (char)0;
-    			buff[i*32 + x*4 + 2] = (char)0;
+    			buff[i*32 + x*4] = green ? (char)255 : (char)0;
+    			buff[i*32 + x*4 + 1] = green ? (char)255 : (char)0;
+    			buff[i*32 + x*4 + 2] = green ? (char)255 : (char)0;
     			buff[i*32 + x*4 + 3] = (char)255;
     		}
     		byte = byte >> 1;
